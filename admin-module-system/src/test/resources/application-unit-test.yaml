@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    username:
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url:
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  global-config:
+    banner: off
+  type-aliases-package: com.fz.admin.user.model.entity
+
+ 

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fz.admin.module.user.mapper.SysDeptMapper">
+
+
+    <resultMap id="BaseResultMap" type="com.fz.admin.module.user.model.entity.SysDept">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="parentId" column="parent_id" jdbcType="BIGINT"/>
+            <result property="ancestors" column="ancestors" jdbcType="VARCHAR"/>
+            <result property="deptName" column="dept_name" jdbcType="VARCHAR"/>
+            <result property="order" column="order" jdbcType="INTEGER"/>
+            <result property="leader" column="leader" jdbcType="VARCHAR"/>
+            <result property="mobile" column="mobile" jdbcType="VARCHAR"/>
+            <result property="email" column="email" jdbcType="VARCHAR"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="deleted" column="deleted" jdbcType="TINYINT"/>
+            <result property="createBy" column="create_by" jdbcType="VARCHAR"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateBy" column="update_by" jdbcType="VARCHAR"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,parent_id,ancestors,
+        dept_name,order_num,leader,
+        phone,email,status,
+        del_flag,create_by,create_time,
+        update_by,update_time
+    </sql>
+
+    <update id="updateBatchDeptAncestor">
+        UPDATE sys_dept SET ancestors =
+        <foreach collection="depts" item="item" index="index"
+                 separator=" " open="case id" close="end">
+            WHEN #{item.id} THEN #{item.ancestors}
+        </foreach>
+        WHERE id IN
+        <foreach collection="depts" item="item" index="index"
+                 separator="," open="(" close=")">
+            #{item.id}
+        </foreach>
+
+    </update>
+
+
+    <update id="updateBatchDeptStatus">
+        UPDATE sys_dept SET status = '0' WHERE sys_dept.id in
+        <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+            #{deptId}
+        </foreach>
+        AND deleted = 0
+    </update>
+
+
+    <select id="selectIdInAncestors" resultType="java.lang.Boolean">
+        SELECT FIND_IN_SET(#{checkId}, ancestors) FROM sys_dept WHERE id = #{deptId};
+    </select>
+
+
+    <select id="selectChildDeptById" resultType="com.fz.admin.module.user.model.entity.SysDept">
+        select id,  sys_dept.ancestors from sys_dept where find_in_set(#{deptId}, ancestors)
+    </select>
+
+</mapper>

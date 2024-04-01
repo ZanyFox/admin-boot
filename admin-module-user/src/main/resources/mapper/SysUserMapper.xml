@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fz.admin.module.user.mapper.SysUserMapper">
+
+    <resultMap id="SysUserResultMap" type="com.fz.admin.module.user.model.entity.SysUser">
+        <id property="id" column="user_id" jdbcType="BIGINT"/>
+        <result property="deptId" column="dept_id" jdbcType="BIGINT"/>
+        <result property="postIds" column="post_ids" jdbcType="VARCHAR"/>
+        <result property="username" column="username" jdbcType="VARCHAR"/>
+        <result property="nickname" column="nickname" jdbcType="VARCHAR"/>
+        <result property="type" column="type" jdbcType="VARCHAR"/>
+        <result property="email" column="email" jdbcType="VARCHAR"/>
+        <result property="mobile" column="mobile" jdbcType="VARCHAR"/>
+        <result property="gender" column="gender" jdbcType="CHAR"/>
+        <result property="avatar" column="avatar" jdbcType="VARCHAR"/>
+        <result property="password" column="password" jdbcType="VARCHAR"/>
+        <result property="status" column="status" jdbcType="TINYINT"/>
+        <result property="deleted" column="deleted" jdbcType="TINYINT"/>
+        <result property="loginIp" column="login_ip" jdbcType="VARCHAR"/>
+        <result property="loginTime" column="login_time" jdbcType="TIMESTAMP"/>
+        <result property="createBy" column="create_by" jdbcType="VARCHAR"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+        <result property="updateBy" column="update_by" jdbcType="VARCHAR"/>
+        <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+        <result property="remark" column="remark" jdbcType="VARCHAR"/>
+
+        <association property="dept" resultMap="DeptResultMap" javaType="sysDept"/>
+        <collection property="roles" resultMap="RoleResultMap" ofType="sysRole" />
+        <collection property="posts" resultMap="PostResultMap" ofType="sysPost"/>
+
+    </resultMap>
+
+    <resultMap id="DeptResultMap" type="SysDept">
+        <id property="id" column="dept_id"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="ancestors" column="ancestors"/>
+        <result property="order" column="order"/>
+        <result property="leader" column="leader"/>
+        <result property="status" column="dept_status"/>
+    </resultMap>
+
+    <resultMap id="RoleResultMap" type="SysRole">
+        <id property="id" column="role_id"/>
+        <result property="name" column="role_name"/>
+        <result property="key" column="role_key"/>
+        <result property="order" column="role_sort"/>
+        <result property="status" column="role_status"/>
+    </resultMap>
+
+    <resultMap id="PostResultMap" type="sysPost">
+        <id property="id" column="post_id" jdbcType="BIGINT"/>
+        <result property="code" column="post_code" jdbcType="VARCHAR"/>
+        <result property="name" column="post_name" jdbcType="VARCHAR"/>
+        <result property="order" column="post_order" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- <sql id="Base_Column_List"> -->
+    <!--     id ,dept_id,username, -->
+    <!--     nickname,type,email, -->
+    <!--     mobile,gender,avatar, -->
+    <!--     status,del_flag, -->
+    <!--     login_ip,login_time,create_by, -->
+    <!--     create_time,update_by,update_time, -->
+    <!--     remark -->
+    <!-- </sql> -->
+
+
+    <resultMap id="UserPermissionInfoVOResultMap" type="com.fz.admin.module.user.model.vo.UserPermMenuInfoVO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result property="username" column="username" jdbcType="VARCHAR"/>
+        <result property="avatar" column="avatar" jdbcType="VARCHAR"/>
+        <collection property="roles" ofType="string">
+            <result column="key"/>
+        </collection>
+
+        <collection property="permissions" ofType="string">
+            <result column="perm"/>
+        </collection>
+    </resultMap>
+
+    <select id="selectUserPermissionInfoVO" resultMap="UserPermissionInfoVOResultMap">
+        SELECT sys_user.id, sys_user.username, sys_user.avatar, sys_role.`key`, sys_menu.`perm`
+        FROM sys_user
+                 LEFT JOIN sys_user_role user_role ON sys_user.id = user_role.user_id
+                 LEFT JOIN sys_role ON user_role.role_id = sys_role.id
+                 LEFT JOIN sys_role_menu ON sys_role_menu.role_id = sys_role.id
+                 LEFT JOIN sys_menu ON sys_role_menu.menu_id = sys_menu.id
+        WHERE sys_user.id = #{id}
+          AND sys_role.deleted = 0;
+    </select>
+
+
+    <resultMap id="UserRoleMenuResultMap" type="com.fz.admin.module.user.model.pojo.UserRoleMenuInfo">
+        <result property="userId" column="user_id" jdbcType="BIGINT"/>
+        <collection property="roles" ofType="string">
+            <result column="role_name"/>
+        </collection>
+
+        <collection property="menus" resultMap="com.fz.admin.module.user.mapper.SysMenuMapper.SysMenuResultMap"/>
+
+    </resultMap>
+
+    <sql id="userRolePerms">
+        sys_menu.id menu_id, sys_menu.parent_id, sys_menu.name, sys_menu.path, sys_menu.component, sys_menu.`query`, sys_menu.visible, sys_menu.status, ifnull(sys_menu.perm,'') as perm, sys_menu.is_frame, sys_menu.is_cache, sys_menu.menu_type, sys_menu.icon, sys_menu.sort, sys_menu.create_time
+    </sql>
+
+
+
+
+    <select id="selectUserPage" parameterType="com.fz.admin.module.user.model.param.UserPageParam" resultMap="SysUserResultMap">
+        SELECT sys_user.id user_id, sys_user.dept_id, sys_user.nickname, sys_user.username, sys_user.email, sys_user.avatar,
+        sys_user.mobile, sys_user.gender, sys_user.status, sys_user.deleted,
+        sys_user.login_ip, sys_user.login_time, sys_user.create_by, sys_user.create_time, sys_user.remark,
+        sys_dept.dept_name, sys_dept.leader
+        FROM sys_user
+        LEFT JOIN  sys_dept ON sys_user.dept_id = sys_dept.id
+        WHERE sys_user.deleted = '0'
+
+        <if test="param.username != null and param.username != ''">
+            AND sys_user.user_name LIKE concat('%', #{param.username}, '%')
+        </if>
+        <if test="param.status != null and param.status != ''">
+            AND sys_user.status = #{param.status}
+        </if>
+        <if test="param.mobile != null and param.mobile != ''">
+            AND sys_user.mobile LIKE concat('%', #{param.mobile}, '%')
+        </if>
+        <if test="param.beginTime != null"><!-- 开始时间检索 -->
+            AND sys_user.create_time &gt;= #{param.beginTime}
+        </if>
+        <if test="param.endTime != null"><!-- 结束时间检索 -->
+            AND sys_user.create_time &lt;= #{param.endTime}
+        </if>
+
+    </select>
+
+
+    <select id="selectUserDetail"  resultMap="SysUserResultMap">
+        SELECT sys_user.id      user_id,
+               sys_user.dept_id,
+               sys_user.nickname,
+               sys_user.username,
+               sys_user.email,
+               sys_user.mobile,
+               sys_user.gender,
+               sys_user.status,
+               sys_user.deleted,
+               sys_user.remark,
+               sys_user.create_time,
+               sys_dept.dept_name,
+               sys_role.name    role_name,
+               sys_role.`key`   role_key,
+               sys_role.`order` role_order,
+               sys_post.id      post_id,
+               sys_post.code    post_code,
+               sys_post.name    post_name
+
+        FROM sys_user
+                 LEFT JOIN sys_dept ON sys_user.dept_id = sys_dept.id AND sys_dept.deleted = 0
+                 LEFT JOIN sys_user_role ON sys_user_role.user_id = sys_user.id
+                 LEFT JOIN sys_role ON sys_user_role.role_id = sys_role.id AND sys_role.deleted = 0
+                 LEFT JOIN sys_user_post ON sys_user.id = sys_user_post.user_id
+                 LEFT JOIN sys_post ON sys_post.id = sys_user_post.post_id
+        WHERE sys_user.id = #{id}
+    </select>
+
+
+
+</mapper>

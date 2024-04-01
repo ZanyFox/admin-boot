@@ -1,0 +1,98 @@
+spring:
+  application:
+    name: admin-boot-application
+
+  profiles:
+    active: dev
+  datasource:
+    username: ${jdbc.username}
+    password: ${jdbc.password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${jdbc.url}
+  data:
+    redis:
+      host: ${redis.host}
+      password: ${redis.password}
+      database: ${redis.database}
+      port: ${redis.port}
+      timeout: 10s
+      lettuce:
+        pool:
+          max-wait: -1
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+      connect-timeout: 10s
+  cache:
+    type: redis
+    redis:
+      time-to-live: 30m
+  config:
+    import:
+      - classpath:aliyun.properties
+      - classpath:jdbc.properties
+      - classpath:redis.properties
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 1GB
+  mvc:
+    format:
+      date-time: yyyy-MM-dd HH:mm:ss
+
+
+mybatis-plus:
+  global-config:
+    banner: off
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.fz.admin.**.model.entity
+
+
+
+admin:
+  captcha:
+    enable: true
+  token:
+    expired-time: 30d
+    renewal-time: 30d
+
+
+aliyun:
+  oss:
+    access-key-id: ${aliyun.access-key-id}
+    access-key-secret: ${aliyun.access-key-secret}
+    bucket: my-test01-mall
+    endpoint: oss-cn-hangzhou.aliyuncs.com
+    region: cn-hangzhou
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui
+  default-flat-param-object: true
+
+
+
+knife4j:
+  enable: true
+  setting:
+    # 动态请求参数
+#    enable-dynamic-parameter: true
+    language: zh_cn
+
+swagger:
+  author: xxx
+  title: api文档
+  description: xxx
+  version: xxx
+  url: xxx
+  license: xx
+  license-url: xxxx
+  email: xxx

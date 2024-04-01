@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fz.admin.module.user.mapper.SysRoleMapper">
+
+    <resultMap id="SysRoleResultMap" type="com.fz.admin.module.user.model.entity.SysRole">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="name" column="name" jdbcType="VARCHAR"/>
+        <result property="key" column="key" jdbcType="VARCHAR"/>
+        <result property="order" column="order" jdbcType="INTEGER"/>
+        <result property="dataScope" column="data_scope" jdbcType="CHAR"/>
+        <result property="menuCheckStrictly" column="menu_check_strictly" jdbcType="TINYINT"/>
+        <result property="deptCheckStrictly" column="dept_check_strictly" jdbcType="TINYINT"/>
+        <result property="dataScopeDeptIds" column="data_scope_dept_ids" jdbcType="VARCHAR"/>
+        <result property="status" column="status" jdbcType="TINYINT"/>
+        <result property="deleted" column="deleted" jdbcType="TINYINT"/>
+        <result property="createBy" column="create_by" jdbcType="VARCHAR"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+        <result property="updateBy" column="update_by" jdbcType="VARCHAR"/>
+        <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+        <result property="remark" column="remark" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List" databaseId="sys_role">
+        id ,`name`,`key`,
+        `order` ,data_scope,menu_check_strictly,
+        dept_check_strictly,`status`,deleted,
+        create_by,create_time,update_by,
+        update_time,remark
+    </sql>
+
+
+    <select id="selectRoleByUserId" resultMap="SysRoleResultMap">
+        select sys_role.name, sys_role.`key`
+        from sys_role
+                 join sys_user_role on sys_user_role.role_id = sys_role.id
+        where sys_user_role.user_id = #{id};
+    </select>
+
+
+    <select id="selectRoleByMenuPerms" resultType="com.fz.admin.module.user.model.entity.SysRole">
+        SELECT DISTINCT sys_role.id, sys_role.`key`
+        FROM sys_role
+        JOIN sys_role_menu ON sys_role.id = sys_role_menu.role_id
+        JOIN sys_menu ON sys_role_menu.menu_id = sys_menu.id
+        WHERE sys_menu.perm IN
+        <foreach collection="perms" open="(" close=")" separator="," item="perm">
+            #{perm}
+        </foreach>
+    </select>
+
+
+    <select id="selectRolesByUserId" resultType="com.fz.admin.module.user.model.entity.SysRole">
+        SELECT sys_role.*
+        FROM sys_role
+                 JOIN sys_user_role ON sys_role.id = sys_user_role.role_id
+        WHERE sys_user_role.user_id = #{userId} AND sys_role.deleted = 0
+    </select>
+
+
+
+    <select id="selectRolePage" resultType="com.fz.admin.module.user.model.entity.SysRole">
+
+        SELECT * FROM sys_role
+        where deleted = 0
+        <if test="param.status != null">
+            AND status = #{param.status}
+        </if>
+        <if test="param.beginTime != null and param.beginTime != ''"><!-- 开始时间检索 -->
+            and create_time &gt;= #{param.beginTime}
+        </if>
+        <if test="param.endTime != null and param.endTime != ''"><!-- 结束时间检索 -->
+            and  create_time &lt;= #{param.endTime}
+        </if>
+        <if test="param.key != null and param.key != ''">
+            AND `key` like concat('%', #{param.key}, '%')
+        </if>
+        <if test="param.name != null and param.name != ''">
+            AND name like concat('%', #{param.name}, '%')
+        </if>
+        order by id
+    </select>
+</mapper>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fz.admin.module.user.mapper.SysUserPostMapper">
+
+    <resultMap id="BaseResultMap" type="com.fz.admin.module.user.model.entity.SysUserPost">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="userId" column="user_id" jdbcType="BIGINT"/>
+        <result property="postId" column="post_id" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,user_id,post_id
+    </sql>
+
+    <insert id="insertBatch">
+        INSERT INTO sys_user_post ( user_id, post_id) values
+        <foreach collection="userPosts" item="userPost" separator=",">
+            (#{userPost.userId}, #{userPost.userId})
+        </foreach>
+    </insert>
+
+
+
+
+</mapper>

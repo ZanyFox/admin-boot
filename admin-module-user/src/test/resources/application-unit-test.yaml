@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    username: ${jdbc.username}
+    password: ${jdbc.password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${jdbc.url}
+  config:
+    import:
+      - classpath:aliyun.properties
+      - classpath:jdbc.properties
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  global-config:
+    banner: off
+  type-aliases-package: com.fz.admin.user.model.entity
+
+
+aliyun:
+  oss:
+    access-key-id: ${aliyun.access-key-id}
+    access-key-secret: ${aliyun.access-key-secret}
+    bucket: my-test01-mall
+    endpoint: oss-cn-hangzhou.aliyuncs.com
+    region: cn-hangzhou
