@@ -1,9 +1,9 @@
 spring:
   datasource:
-    username:
-    password:
+    username: ${jdbc.username}
+    password: ${jdbc.password}
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url:
+    url: ${jdbc.url}
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
@@ -11,4 +11,3 @@ mybatis-plus:
     banner: off
   type-aliases-package: com.fz.admin.user.model.entity
 
- 
