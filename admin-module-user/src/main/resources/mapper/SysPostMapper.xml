@@ -4,9 +4,9 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.fz.admin.module.user.mapper.SysPostMapper">
 
-    <resultMap id="BaseResultMap" type="com.fz.admin.module.user.model.entity.SysRole">
+    <resultMap id="BaseResultMap" type="com.fz.admin.module.user.model.entity.SysPost">
             <id property="id" column="id" jdbcType="BIGINT"/>
-            <result property="key" column="key" jdbcType="VARCHAR"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
             <result property="name" column="name" jdbcType="VARCHAR"/>
             <result property="order" column="order" jdbcType="INTEGER"/>
             <result property="status" column="status" jdbcType="TINYINT"/>

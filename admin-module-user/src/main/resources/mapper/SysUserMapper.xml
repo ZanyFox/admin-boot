@@ -109,20 +109,28 @@
 
 
 
+    <!--
+            # status是数字 不能加 status != '' 条件 否则会整个都不生效
 
+            sys_user.dept_id IN ( SELECT t.dept_id FROM sys_dept t WHERE find_in_set(#{param.deptId}, t.ancestors) ))
+            先查询祖先部门包含deptId的部门，之后再查出在这些部门中的用户
+                  OR sys_user.dept_id IN ( SELECT t.id FROM sys_dept t WHERE find_in_set(#{param.deptId}, t.`ancestors`) ))
+     -->
     <select id="selectUserPage" parameterType="com.fz.admin.module.user.model.param.UserPageParam" resultMap="SysUserResultMap">
-        SELECT sys_user.id user_id, sys_user.dept_id, sys_user.nickname, sys_user.username, sys_user.email, sys_user.avatar,
+        SELECT sys_user.id user_id, sys_user.dept_id, sys_user.nickname, sys_user.username, sys_user.email,
+        sys_user.avatar,
         sys_user.mobile, sys_user.gender, sys_user.status, sys_user.deleted,
         sys_user.login_ip, sys_user.login_time, sys_user.create_by, sys_user.create_time, sys_user.remark,
         sys_dept.dept_name, sys_dept.leader
         FROM sys_user
-        LEFT JOIN  sys_dept ON sys_user.dept_id = sys_dept.id
-        WHERE sys_user.deleted = '0'
+        LEFT JOIN sys_dept ON sys_user.dept_id = sys_dept.id
+        WHERE sys_user.deleted = 0
 
         <if test="param.username != null and param.username != ''">
-            AND sys_user.user_name LIKE concat('%', #{param.username}, '%')
+            AND sys_user.username LIKE concat('%', #{param.username}, '%')
         </if>
-        <if test="param.status != null and param.status != ''">
+
+        <if test="param.status != null">
             AND sys_user.status = #{param.status}
         </if>
         <if test="param.mobile != null and param.mobile != ''">
@@ -134,7 +142,11 @@
         <if test="param.endTime != null"><!-- 结束时间检索 -->
             AND sys_user.create_time &lt;= #{param.endTime}
         </if>
-
+        <if test="param.deptId != null and param.deptId != 0">
+            AND (sys_user.dept_id = #{param.deptId}
+            OR sys_user.dept_id IN ( SELECT t.id FROM sys_dept t WHERE find_in_set(#{param.deptId}, t.`ancestors`) ))
+        </if>
+        ORDER BY sys_user.id
     </select>
 
 
@@ -151,6 +163,7 @@
                sys_user.remark,
                sys_user.create_time,
                sys_dept.dept_name,
+               sys_role.id role_id,
                sys_role.name    role_name,
                sys_role.`key`   role_key,
                sys_role.`order` role_order,

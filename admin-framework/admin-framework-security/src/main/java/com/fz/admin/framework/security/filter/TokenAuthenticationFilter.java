@@ -16,7 +16,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -40,6 +39,9 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     @Value("${admin.token.renewal-time}")
     private Duration renewalTime = Duration.ofDays(3);
 
+    @Value("${admin.security.mock.enabled:false}")
+    private boolean mockEnabled;
+
     public TokenAuthenticationFilter(WebSecurityProperties webSecurityProperties,
                                      StringRedisTemplate redisTemplate) {
         this.webSecurityProperties = webSecurityProperties;
@@ -48,41 +50,14 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
             throws ServletException, IOException {
 
-        AntPathMatcher pathMatcher = new AntPathMatcher();
-
-        if (pathMatcher.match("/exception", request.getRequestURI()))
-            throw new RuntimeException("过滤器中抛出异常");
-
-        String tokenHeader = request.getHeader(webSecurityProperties.getTokenHeader());
-        if (!StringUtils.hasText(tokenHeader) || !tokenHeader.startsWith(AUTHORIZATION_BEARER)) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        String token = tokenHeader.substring(AUTHORIZATION_BEARER.length());
-        String tokenKey = RedisCacheConstant.USER_TOKEN_PREFIX + token;
-        String tokenUserCacheJson = redisTemplate.opsForValue().get(tokenKey);
-
-
-        if (!StringUtils.hasText(tokenUserCacheJson)) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        LoginUser loginUser = Json.parseObject(tokenUserCacheJson, LoginUser.class);
+        LoginUser loginUser = mockEnabled ? mockLoginUser() : getLoginUserFromRequest(request);
 
         if (loginUser == null) {
             chain.doFilter(request, response);
             return;
-        }
-
-        // 判断登录时间刷新有效期
-        if (loginUser.getExpiredAt() - System.currentTimeMillis() <= renewalTime.toMillis()) {
-            loginUser.setExpiredAt(System.currentTimeMillis() + tokenExpiredTime.toMillis());
-            redisTemplate.opsForValue().set(tokenKey, Json.toJsonString(loginUser), tokenExpiredTime);
         }
 
         // 保存登录用户
@@ -96,6 +71,48 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         request.setAttribute(REQUEST_ATTRIBUTE_LOGIN_USER_ID, loginUser.getId());
 
         chain.doFilter(request, response);
+    }
+
+
+    private LoginUser getLoginUserFromRequest(HttpServletRequest request) {
+
+        String tokenHeader = request.getHeader(webSecurityProperties.getTokenHeader());
+        if (!StringUtils.hasText(tokenHeader) || !tokenHeader.startsWith(AUTHORIZATION_BEARER)) {
+            return null;
+        }
+
+        String token = tokenHeader.substring(AUTHORIZATION_BEARER.length());
+        String tokenKey = RedisCacheConstant.USER_TOKEN_PREFIX + token;
+        String tokenUserCacheJson = redisTemplate.opsForValue().get(tokenKey);
+
+
+        if (!StringUtils.hasText(tokenUserCacheJson)) {
+            return null;
+        }
+
+        LoginUser loginUser = Json.parseObject(tokenUserCacheJson, LoginUser.class);
+
+        if (loginUser == null) {
+            return null;
+        }
+
+        // 判断登录时间刷新有效期
+        if (loginUser.getExpiredAt() - System.currentTimeMillis() <= renewalTime.toMillis()) {
+            loginUser.setExpiredAt(System.currentTimeMillis() + tokenExpiredTime.toMillis());
+            redisTemplate.opsForValue().set(tokenKey, Json.toJsonString(loginUser), tokenExpiredTime);
+        }
+
+        return loginUser;
+
+    }
+
+
+    private LoginUser mockLoginUser() {
+
+        LoginUser loginUser = new LoginUser();
+        loginUser.setId(1L);
+
+        return loginUser;
     }
 
 }

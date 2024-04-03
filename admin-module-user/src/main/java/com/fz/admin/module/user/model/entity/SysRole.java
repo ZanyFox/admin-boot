@@ -1,6 +1,7 @@
 package com.fz.admin.module.user.model.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fz.admin.framework.mybatis.model.BaseEntity;
@@ -31,6 +32,7 @@ public class SysRole extends BaseEntity {
     /**
      * 显示顺序
      */
+    @TableField(value = "`order`")
     private Integer order;
 
     /**

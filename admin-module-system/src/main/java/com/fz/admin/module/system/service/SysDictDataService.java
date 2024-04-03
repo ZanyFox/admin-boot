@@ -53,4 +53,11 @@ public interface SysDictDataService extends IService<SysDictData> {
      * @return 字典id
      */
     Long createDictData(DictDataSaveParam param);
+
+    /**
+     * 根据类型获取字典数据
+     * @param type 字典类型
+     * @return 字典数据集合
+     */
+    List<SysDictData> getDictDataByType(String type);
 }

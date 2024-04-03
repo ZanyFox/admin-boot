@@ -34,8 +34,3 @@ build/
 ### Mac OS ###
 .DS_Store
 
-src111
-
-admin-module-user-api
-admin-module-infra
-*.properties

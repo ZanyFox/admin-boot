@@ -32,7 +32,7 @@ public class UserPageParam extends PageParam {
     @Schema(description = "结束时间", example = "[2022-07-01 00:00:00, 2022-07-01 23:59:59]")
     private LocalDateTime endTime;
 
-    @Schema(description = "部门编号，同时筛选子部门", example = "1024")
+    @Schema(description = "部门id", example = "0")
     private Long deptId;
 
 }

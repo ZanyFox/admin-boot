@@ -73,7 +73,7 @@ public class DictDataController {
     }
 
     @GetMapping("/page")
-    @Operation(summary = "/获得字典类型的分页列表")
+    @Operation(summary = "获得字典类型的分页列表")
     // @PreAuthorize("@ss.hasPermission('system:dict:query')")
     public ServRespEntity<PageResult<SysDictData>> getDictTypePage(@Validated DictDataPageParam param) {
         PageResult<SysDictData> pageResult = dictDataService.getDictDataPage(param);
@@ -81,13 +81,22 @@ public class DictDataController {
     }
 
     @GetMapping(value = "/get")
-    @Operation(summary = "/查询字典数据详细")
-    @Parameter(name = "id", description = "编号", required = true, example = "1024")
+    @Operation(summary = "查询字典数据详细")
+    @Parameter(name = "id", description = "编号", required = true, example = "0")
     // @PreAuthorize("@ss.hasPermission('system:dict:query')")
     public ServRespEntity<SysDictData> getDictData(@RequestParam("id") Long id) {
         SysDictData dictData = dictDataService.getById(id);
         return success();
     }
+
+    @GetMapping(value = "/get-by-type")
+    @Operation(summary = "根据字典类型获取字典数据")
+    @Parameter(name = "type", description = "字典类型", required = true, example = "sys_user_sex")
+    public ServRespEntity<List<SysDictData>> getDictDataByType(@RequestParam("type") String type) {
+        List<SysDictData> dictDataList = dictDataService.getDictDataByType(type);
+        return success(dictDataList);
+    }
+
 
     // @GetMapping("/export")
     // @Operation(summary = "导出字典数据")

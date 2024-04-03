@@ -3,20 +3,26 @@ package com.fz.admin.module.user;
 import com.alibaba.druid.spring.boot3.autoconfigure.DruidDataSourceAutoConfigure;
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration;
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusInnerInterceptorAutoConfiguration;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.fz.admin.framework.common.pojo.TreeSelect;
 import com.fz.admin.framework.file.AliYunOSSFileService;
 import com.fz.admin.framework.file.FileService;
 import com.fz.admin.framework.file.config.AliYunOSSConfiguration;
 import com.fz.admin.framework.file.config.AliYunOSSProperties;
 import com.fz.admin.framework.mybatis.config.MyBatisPlusConfig;
 import com.fz.admin.framework.mybatis.interceptor.SQLLogInterceptor;
-import com.fz.admin.module.user.mapper.SysMenuMapper;
-import com.fz.admin.module.user.mapper.SysRoleMapper;
+import com.fz.admin.framework.mybatis.util.MyBatisUtils;
 import com.fz.admin.module.user.mapper.SysUserMapper;
-import com.fz.admin.module.user.mapper.SysUserPostMapper;
+import com.fz.admin.module.user.model.entity.SysPost;
 import com.fz.admin.module.user.model.entity.SysUser;
 import com.fz.admin.module.user.model.entity.SysUserPost;
-import com.fz.admin.module.user.service.SysUserRoleService;
+import com.fz.admin.module.user.model.param.DeptListParam;
+import com.fz.admin.module.user.model.param.UserPageParam;
+import com.fz.admin.module.user.service.SysDeptService;
+import com.fz.admin.module.user.service.SysPostService;
 import com.fz.admin.module.user.service.SysUserService;
+import com.fz.admin.module.user.service.impl.SysDeptServiceImpl;
+import com.fz.admin.module.user.service.impl.SysPostServiceImpl;
 import com.fz.admin.module.user.service.impl.SysUserRoleServiceImpl;
 import com.fz.admin.module.user.service.impl.SysUserServiceImpl;
 import jakarta.annotation.Resource;
@@ -45,7 +51,7 @@ import static org.mockito.Mockito.verify;
 @ActiveProfiles("unit-test") // 设置使用 application-unit-test 配置文件
 public class UserTest {
 
-
+    //
     @Resource
     private SysUserMapper userMapper;
 
@@ -53,34 +59,44 @@ public class UserTest {
     @Mock
     private List<String> mockList;
 
-    @Resource
-    private SysMenuMapper menuMapper;
+    // @Resource
+    // private SysMenuMapper menuMapper;
 
     @Value("${spring.application.name:hhh}")
     private String appName;
 
 
-    @Resource
-    private SysUserRoleService userRoleService;
+    // @Resource
+    // private SysUserRoleService userRoleService;
 
 
     @Resource
     private ApplicationContext context;
 
-    @Resource
-    private SysUserService sysUserService;
+    // @Resource
+    // private SysUserService sysUserService;
+
+    // @Resource
+    // private SysRoleMapper roleMapper;
+    //
+    // @Resource
+    // private SysUserPostMapper userPostMapper;
 
     @Resource
-    private SysRoleMapper roleMapper;
-
-    @Resource
-    private SysUserPostMapper userPostMapper;
+    private SysPostService postService;
 
     @Resource
     private FileService fileService;
 
     @Resource
     private AliYunOSSProperties aliYunOSSProperties;
+
+    @Resource
+    private SysDeptService deptService;
+
+    @Resource
+    private SysUserService userService;
+
 
     @Import({
 
@@ -97,9 +113,16 @@ public class UserTest {
             BCryptPasswordEncoder.class,
             SysUserServiceImpl.class,
             AliYunOSSConfiguration.class,
-            AliYunOSSFileService.class
+            AliYunOSSFileService.class,
+            SysDeptServiceImpl.class,
+            SysPostServiceImpl.class,
+            SysUserServiceImpl.class
+            // SysUserMapper.class,
+            // SysDeptMapper.class
     })
     public static class Application {
+
+
     }
 
     @Test
@@ -118,9 +141,13 @@ public class UserTest {
     }
 
     @Test
-    public void testSql() {
-        System.out.println(roleMapper.selectRoleByMenuPerms(List.of("system:user:list")));
+    public void testDept() {
+
+        List<TreeSelect> deptTree = deptService.getDeptTree(new DeptListParam());
+        System.out.println(deptTree);
     }
+
+
 
     @Test
     public void testUserPermission() {
@@ -131,14 +158,39 @@ public class UserTest {
         sysUserPost1.setPostId(200L);
         sysUserPost1.setUserId(200L);
 
-        userPostMapper.insertBatch(List.of(sysUserPost, sysUserPost1));
+        // userPostMapper.insertBatch(List.of(sysUserPost, sysUserPost1));
     }
 
     @Test
     public void testUserPage() {
 
-        SysUser sysUser = userMapper.selectUserDetail(1L);
-        System.out.println(sysUser);
+        UserPageParam pageParam = new UserPageParam();
+
+        // pageParam.setPage(2);
+        // pageParam.setUsername("子");
+        // pageParam.setStatus(0);
+        pageParam.setDeptId(101L);
+
+        IPage<SysUser> page = MyBatisUtils.buildPage(pageParam);
+        userMapper.selectUserPage(page, pageParam);
+        System.out.println(page.getRecords());
+    }
+
+    @Test
+    public void testPost() {
+        // List<SysPost> simplePostList = postService.getSimplePostList();
+        // System.out.println(simplePostList);
+
+        List<SysPost> list = postService.lambdaQuery()
+                // .select(SysPost::getId, SysPost::getName, SysPost::getOrder)
+                // .eq(SysPost::getStatus, CommonStatusEnum.ENABLE.getStatus())
+                .list();
+        System.out.println(list);
+    }
+
+    @Test
+    public void testUpdateUserStatus() {
+        userService.updateUserStatus(112L, 1);
     }
 
     @Test

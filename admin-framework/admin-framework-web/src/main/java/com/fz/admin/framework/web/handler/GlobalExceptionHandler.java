@@ -16,6 +16,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -127,7 +128,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({NoResourceFoundException.class})
     public ResponseEntity<?> noResourceFoundExceptionHandler(NoResourceFoundException exception) {
-        log.warn("[noResourceFoundExceptionHandler]", exception);
+        log.warn("[noResourceFoundExceptionHandler], {}", exception.getLocalizedMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
 
@@ -149,10 +150,12 @@ public class GlobalExceptionHandler {
     /**
      * 处理系统异常
      */
+
+    @ResponseStatus
     @ExceptionHandler(value = Exception.class)
     public ServRespEntity<?> defaultExceptionHandler(HttpServletRequest req, Throwable ex) {
 
-        log.error("[defaultExceptionHandler]", ex);
+        log.error("[defaultExceptionHandler] {}", ex.getLocalizedMessage());
 
         return ServRespEntity.fail(SERVER_INTERNAL_ERROR);
     }

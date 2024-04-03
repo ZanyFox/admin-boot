@@ -14,11 +14,11 @@ import com.fz.admin.framework.common.util.CollectionConverter;
 import com.fz.admin.framework.common.util.Json;
 import com.fz.admin.framework.file.FileService;
 import com.fz.admin.framework.mybatis.util.MyBatisUtils;
-import com.fz.admin.module.user.model.param.UserPageParam;
 import com.fz.admin.module.user.mapper.SysUserMapper;
 import com.fz.admin.module.user.mapper.SysUserPostMapper;
 import com.fz.admin.module.user.model.entity.SysUser;
 import com.fz.admin.module.user.model.entity.SysUserPost;
+import com.fz.admin.module.user.model.param.UserPageParam;
 import com.fz.admin.module.user.model.param.UserProfileUpdateParam;
 import com.fz.admin.module.user.model.param.UserProfileUpdatePasswordParam;
 import com.fz.admin.module.user.model.param.UserSaveParam;
@@ -32,8 +32,9 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -74,7 +75,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     @Override
-    public PageResult<SysUser> page(UserPageParam param) {
+    public PageResult<SysUser> getUserpage(UserPageParam param) {
 
         IPage<SysUser> page = MyBatisUtils.buildPage(param);
         userMapper.selectUserPage(page, param);
@@ -175,8 +176,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         userPostMapper.delete(Wrappers.<SysUserPost>lambdaUpdate()
                 .eq(SysUserPost::getUserId, userId));
         userRoleService.deleteRolesByUserId(userId);
-
-
     }
 
     @Override
@@ -192,9 +191,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     public void updateUserStatus(Long id, Integer status) {
         validateUserExist(id);
-        userMapper.update(lambdaUpdate()
-                .eq(SysUser::getId, id)
-                .set(SysUser::getStatus, status));
+        lambdaUpdate().eq(SysUser::getId, id).set(SysUser::getStatus, status).update();
     }
 
     @Override
@@ -225,12 +222,20 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     @Override
-    public String updateUserAvatar(Long userId, InputStream inputStream, String filename) {
+    public String updateUserAvatar(Long userId, MultipartFile file) throws IOException {
 
         validateUserExist(userId);
-        String avatarUrl = fileService.uploadFile(inputStream, filename);
+        String avatarUrl = fileService.uploadFile(file.getInputStream(), file.getOriginalFilename());
         lambdaUpdate().eq(SysUser::getId, userId).set(SysUser::getAvatar, avatarUrl).update();
         return avatarUrl;
+    }
+
+    @Transactional
+    @Override
+    public void deleteUserBatchByIds(List<Long> ids) {
+
+        lambdaUpdate().in(SysUser::getId, ids).remove();
+        userPostMapper.delete(Wrappers.<SysUserPost>lambdaQuery().in(SysUserPost::getUserId, ids));
     }
 
     private void validateUserOldPassword(Long userId, String password) {

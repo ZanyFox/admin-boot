@@ -40,7 +40,7 @@ public class AdminBootApplication implements CommandLineRunner {
         param.setPage(2);
         param.setSize(5);
 
-        PageResult<SysUser> result = sysUserService.page(param);
+        PageResult<SysUser> result = sysUserService.getUserpage(param);
         System.out.println(result);
     }
 }

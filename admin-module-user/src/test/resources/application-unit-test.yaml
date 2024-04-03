@@ -13,7 +13,7 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   global-config:
     banner: off
-  type-aliases-package: com.fz.admin.user.model.entity
+  type-aliases-package: com.fz.admin.**.model.entity
 
 
 aliyun:

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fz.admin.framework.common.enums.CommonStatusEnum;
 import com.fz.admin.framework.mybatis.model.BaseEntity;
 import lombok.Data;
 
@@ -73,12 +74,12 @@ public class SysUser extends BaseEntity {
     private String password;
 
     /**
-     * 帐号状态（0正常 1停用）
+     * 帐号状态 {@link CommonStatusEnum}
      */
     private Integer status;
 
     /**
-     * 删除标志（0代表存在 2代表删除）
+     * 逻辑删除 (0 存在 1 删除)
      */
     private Integer deleted;
 

@@ -25,6 +25,7 @@ public class SysDictData extends BaseEntity implements Serializable {
     /**
      * 字典排序
      */
+    @TableField(value = "`order`")
     private Integer order;
 
     /**

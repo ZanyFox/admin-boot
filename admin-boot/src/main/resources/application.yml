@@ -59,6 +59,9 @@ admin:
   token:
     expired-time: 30d
     renewal-time: 30d
+  security:
+    mock:
+      enabled: true
 
 
 aliyun:

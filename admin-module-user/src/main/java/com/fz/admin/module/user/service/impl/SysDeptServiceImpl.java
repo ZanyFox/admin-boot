@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fz.admin.framework.common.enums.CommonStatusEnum;
 import com.fz.admin.framework.common.enums.ServRespCode;
 import com.fz.admin.framework.common.exception.ServiceException;
+import com.fz.admin.framework.common.pojo.TreeSelect;
 import com.fz.admin.module.user.mapper.SysDeptMapper;
 import com.fz.admin.module.user.mapper.SysUserMapper;
 import com.fz.admin.module.user.model.entity.SysDept;
@@ -64,7 +65,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
     @Override
     public List<SysDept> getDeptSimpleList() {
         List<SysDept> list = lambdaQuery()
-                .select(SysDept::getId, SysDept::getDeptName, SysDept::getParentId)
+                .select(SysDept::getId, SysDept::getDeptName, SysDept::getParentId, SysDept::getOrder)
                 .eq(SysDept::getStatus, CommonStatusEnum.ENABLE.getStatus())
                 .list();
         list.sort(Comparator.comparingInt(SysDept::getOrder));
@@ -179,6 +180,33 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         return dept.getId();
     }
 
+    @Override
+    public List<TreeSelect> getDeptTree(DeptListParam param) {
+
+        List<TreeSelect> treeSelects = lambdaQuery()
+                .select(SysDept::getDeptName, SysDept::getId, SysDept::getParentId)
+                .eq( param.getStatus() != null, SysDept::getStatus, param.getStatus())
+                .like(StringUtils.isNotBlank(param.getName()), SysDept::getDeptName, param.getName())
+                .list().stream().map(sysDept -> {
+                    TreeSelect tree = new TreeSelect();
+                    tree.setId(sysDept.getId());
+                    tree.setLabel(sysDept.getDeptName());
+                    tree.setParentId(sysDept.getParentId());
+                    return tree;
+                }).toList();
+
+        List<Long> treeIds = treeSelects.stream().map(TreeSelect::getId).toList();
+
+        return treeSelects.stream().filter(item -> !treeIds.contains(item.getParentId()))
+                .peek(treeSelect -> treeSelect.setChildren(buildDeptTree(treeSelect.getId(), treeSelects))).toList();
+
+    }
+
+    private List<TreeSelect> buildDeptTree(Long parentId, List<TreeSelect> treeSelects) {
+
+        return treeSelects.stream().filter(item -> Objects.equals(item.getParentId(), parentId))
+                .peek(treeSelect -> treeSelect.setChildren(buildDeptTree(treeSelect.getId(), treeSelects))).toList();
+    }
 
     /**
      * 更新子部门的ancestors
@@ -285,7 +313,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
 
 
     /**
-     * 获取部门的子部门
+     * 获取部门的子部门 循环 + 递归，虽然不用循环查表 但是数据量大也会占用很多内存，必要时可以循环查表
      *
      * @param id
      * @param result

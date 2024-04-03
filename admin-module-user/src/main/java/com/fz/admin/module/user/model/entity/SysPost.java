@@ -1,6 +1,7 @@
 package com.fz.admin.module.user.model.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fz.admin.framework.mybatis.model.BaseEntity;
@@ -9,7 +10,7 @@ import lombok.Data;
 /**
  * 岗位信息表
  */
-@TableName(value ="sys_post")
+@TableName(value = "sys_post")
 @Data
 public class SysPost extends BaseEntity {
     /**
@@ -31,6 +32,8 @@ public class SysPost extends BaseEntity {
     /**
      * 显示顺序
      */
+    // 防止查询时与数据库order关键字冲突
+    @TableField(value = "`order`")
     private Integer order;
 
     /**

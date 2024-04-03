@@ -208,8 +208,20 @@
                         <skipTests>true</skipTests>
                     </configuration>
                 </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.11.0</version>
+                    <configuration>
+                        <!-- 保留参数名 -->
+                        <parameters>true</parameters>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
+
+
     </build>
 
     <!-- 使用 huawei / aliyun 的 Maven 源，提升下载速度 -->

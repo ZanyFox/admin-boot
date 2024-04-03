@@ -2,6 +2,7 @@ package com.fz.admin.module.user.controller.admin;
 
 
 import com.fz.admin.framework.common.pojo.ServRespEntity;
+import com.fz.admin.framework.common.pojo.TreeSelect;
 import com.fz.admin.module.user.model.entity.SysDept;
 import com.fz.admin.module.user.model.param.DeptCreateOrUpdateParam;
 import com.fz.admin.module.user.model.param.DeptListParam;
@@ -75,6 +76,14 @@ public class DeptController {
     public ServRespEntity<SysDept> getDept(@RequestParam("id") Long id) {
         SysDept dept = deptService.getDeptById(id);
         return success(dept);
+    }
+
+
+    @GetMapping("/tree")
+    @Operation(summary = "获得部门树形信息")
+    public ServRespEntity<List<TreeSelect>> getDeptTree(DeptListParam param) {
+        List<TreeSelect> deptTree = deptService.getDeptTree(param);
+        return success(deptTree);
     }
 
 }

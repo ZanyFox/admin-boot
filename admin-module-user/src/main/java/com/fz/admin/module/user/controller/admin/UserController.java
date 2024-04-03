@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -58,6 +59,15 @@ public class UserController {
         return success(true);
     }
 
+    @DeleteMapping("/delete-batch")
+    @Operation(summary = "删除用户")
+    @Parameter(name = "id", description = "编号", required = true, example = "1024")
+    // @PreAuthorize("@ss.hasAnyPermission('system:user:delete')")
+    public ServRespEntity<Boolean> deleteUserBatch(@RequestBody @NotEmpty(message = "不可为空") List<Long> ids) {
+        userService.deleteUserBatchByIds(ids);
+        return success(true);
+    }
+
     @PutMapping("update")
     @Operation(summary = "修改用户")
     // @PreAuthorize("@ss.hasAnyPermission('system:user:update')")
@@ -69,7 +79,7 @@ public class UserController {
     @PutMapping("/update-password")
     @Operation(summary = "重置用户密码")
     // @PreAuthorize("@ss.hasAnyPermission('system:user:update-password')")
-    public ServRespEntity<Boolean> updateUserPassword(@Valid @RequestBody UserUpdatePasswordParam param) {
+    public ServRespEntity<Boolean> updateUserPassword(@Validated @RequestBody UserUpdatePasswordParam param) {
         userService.updateUserPassword(param.getId(), param.getPassword());
         return success(true);
     }
@@ -77,27 +87,24 @@ public class UserController {
     @PutMapping("/update-status")
     @Operation(summary = "修改用户状态")
     // @PreAuthorize("@ss.hasAnyPermission('system:user:update')")
-    public ServRespEntity<Boolean> updateUserStatus(@Valid @RequestBody UserUpdateStatusParam param) {
+    public ServRespEntity<Boolean> updateUserStatus(@Validated @RequestBody UserUpdateStatusParam param) {
         userService.updateUserStatus(param.getId(), param.getStatus());
         return success(true);
     }
 
-
-
     @Operation(summary = "获得用户分页列表")
     // @PreAuthorize("@ss.hasAnyPermission('system:user:list')")
     @GetMapping("/page")
-    public ServRespEntity<PageResult<SysUser>> list(UserPageParam pageParam) {
-        return success(userService.page(pageParam));
+    public ServRespEntity<PageResult<SysUser>> getUserPage(UserPageParam pageParam) {
+        return success(userService.getUserpage(pageParam));
     }
 
 
     @GetMapping("/get")
     @Operation(summary = "获得用户详情")
-    @Parameter(name = "id", description = "编号", required = true, example = "1024")
+    @Parameter(name = "id", description = "编号", required = true, example = "0")
     // @PreAuthorize("@ss.hasAnyPermission('system:user:query')")
     public ServRespEntity<SysUser> getUser(@RequestParam("id") Long id) {
-
 
         SysUser user = userService.getUserDetail(id);
         if (user == null || DeletedEnum.isDeleted(user.getDeleted())) {

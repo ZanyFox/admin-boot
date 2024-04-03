@@ -89,6 +89,12 @@ public class SysDictDataServiceImpl extends ServiceImpl<SysDictDataMapper, SysDi
         return dictData.getId();
     }
 
+    @Override
+    public List<SysDictData> getDictDataByType(String type) {
+
+        return lambdaQuery().eq(SysDictData::getDictType, type).list();
+    }
+
     /**
      * 校验字典类型是否存在
      * @param type 字典类型

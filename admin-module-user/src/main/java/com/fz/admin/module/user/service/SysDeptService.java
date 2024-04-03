@@ -2,6 +2,7 @@ package com.fz.admin.module.user.service;
 
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.fz.admin.framework.common.pojo.TreeSelect;
 import com.fz.admin.module.user.model.entity.SysDept;
 import com.fz.admin.module.user.model.param.DeptCreateOrUpdateParam;
 import com.fz.admin.module.user.model.param.DeptListParam;
@@ -60,4 +61,11 @@ public interface SysDeptService extends IService<SysDept> {
      * @return 部门id
      */
     Long createDept(DeptCreateOrUpdateParam param);
+
+    /**
+     * 获取部门树形数据
+     * @param param 部门参数
+     * @return 树形信息
+     */
+    List<TreeSelect> getDeptTree(DeptListParam param);
 }

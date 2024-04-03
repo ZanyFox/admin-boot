@@ -62,7 +62,7 @@ public class UserProfileController {
         if (file.isEmpty()) {
             throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR);
         }
-        String avatar = userService.updateUserAvatar(getLoginUserId(), file.getInputStream(), file.getOriginalFilename());
+        String avatar = userService.updateUserAvatar(getLoginUserId(), file);
         return success(avatar);
     }
 
