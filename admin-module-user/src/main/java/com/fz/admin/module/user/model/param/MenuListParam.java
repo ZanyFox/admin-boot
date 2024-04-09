@@ -9,6 +9,8 @@ import lombok.Data;
 @Data
 public class MenuListParam {
 
+    public final static MenuListParam EMPTY = new MenuListParam();
+
     @Schema(description = "菜单名称，模糊匹配", example = "芋道")
     private String name;
 

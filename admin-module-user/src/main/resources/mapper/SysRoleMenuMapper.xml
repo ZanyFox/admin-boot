@@ -13,4 +13,12 @@
     <sql id="Base_Column_List">
         id,role_id,menu_id
     </sql>
+
+
+    <insert id="insertBatch">
+        insert into sys_role_menu(role_id, menu_id) values
+        <foreach item="item" index="index" collection="roleMenus" separator=",">
+            (#{item.roleId},#{item.menuId})
+        </foreach>
+    </insert>
 </mapper>

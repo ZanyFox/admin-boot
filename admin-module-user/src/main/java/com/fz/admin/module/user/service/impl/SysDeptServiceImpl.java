@@ -23,8 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.function.Supplier;
-
-import static com.fz.admin.framework.common.util.CollectionConverter.convertList;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -36,12 +35,6 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
 
     private SysUserMapper userMapper;
 
-    @Override
-    public List<Long> getChildDeptIdList(Long deptId) {
-
-
-        return null;
-    }
 
     @Override
     public List<SysDept> getChildDeptList(Long parentDeptId) {
@@ -53,9 +46,9 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
 
         while (ObjectUtils.isNotEmpty(childDepts)) {
             allChildDept.addAll(childDepts);
-            List<SysDept> finalChildDepts = childDepts;
+            List<Long> childDeptIds = childDepts.stream().map(SysDept::getId).toList();
             childDepts = list.stream()
-                    .filter((dept) -> convertList(finalChildDepts, SysDept::getId).contains(dept.getParentId()))
+                    .filter((dept) -> childDeptIds.contains(dept.getParentId()))
                     .toList();
         }
         return allChildDept;
@@ -185,7 +178,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
 
         List<TreeSelect> treeSelects = lambdaQuery()
                 .select(SysDept::getDeptName, SysDept::getId, SysDept::getParentId)
-                .eq( param.getStatus() != null, SysDept::getStatus, param.getStatus())
+                .eq(param.getStatus() != null, SysDept::getStatus, param.getStatus())
                 .like(StringUtils.isNotBlank(param.getName()), SysDept::getDeptName, param.getName())
                 .list().stream().map(sysDept -> {
                     TreeSelect tree = new TreeSelect();
@@ -200,6 +193,51 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         return treeSelects.stream().filter(item -> !treeIds.contains(item.getParentId()))
                 .peek(treeSelect -> treeSelect.setChildren(buildDeptTree(treeSelect.getId(), treeSelects))).toList();
 
+    }
+
+    private Map<Long, SysDept> getDeptMapByIds(Collection<Long> ids) {
+
+        return lambdaQuery().in(SysDept::getId, ids)
+                .list().stream().collect(Collectors.toMap(SysDept::getId, dept -> dept));
+    }
+
+    @Override
+    public void validateDeptList(Collection<Long> ids) {
+        if (ObjectUtils.isEmpty(ids)) {
+            return;
+        }
+        // 获得科室信息
+
+        Map<Long, SysDept> deptMap = getDeptMapByIds(ids);
+
+        // 校验
+        ids.forEach(id -> {
+            SysDept dept = deptMap.get(id);
+            if (dept == null) {
+                throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "部门不存在");
+            }
+            if (!CommonStatusEnum.ENABLE.getStatus().equals(dept.getStatus())) {
+                throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "部门未启用");
+            }
+        });
+    }
+
+    @Override
+    public void validateDept(Long id) {
+
+        if (id == null)
+            return;
+
+        SysDept dept = getById(id);
+        if (dept == null)
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "部门不存在");
+        if (!CommonStatusEnum.isEnable(dept.getStatus()))
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "部门未启用");
+    }
+
+    @Override
+    public List<SysDept> listDeptByRoleId(Long roleId) {
+        return deptMapper.selectDeptsByRoleId(roleId);
     }
 
     private List<TreeSelect> buildDeptTree(Long parentId, List<TreeSelect> treeSelects) {
@@ -277,7 +315,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
             return parentDept;
         }
 
-        // 判断部门id 是否存在于父部门的祖先部门id集合中
+        // 判断部门id 是否存在于父部门的祖先部门id列表中
         Boolean isIdInAncestors = deptMapper.selectIdInAncestors(id, parentId);
 
         if (Boolean.TRUE.equals(isIdInAncestors)) {

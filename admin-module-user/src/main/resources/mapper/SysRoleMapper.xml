@@ -31,11 +31,12 @@
     </sql>
 
 
-    <select id="selectRoleByUserId" resultMap="SysRoleResultMap">
-        select sys_role.name, sys_role.`key`
-        from sys_role
-                 join sys_user_role on sys_user_role.role_id = sys_role.id
-        where sys_user_role.user_id = #{id};
+    <select id="selectRoleByUserId" resultType="sysRole">
+        SELECT sys_role.*
+        FROM sys_role
+                 JOIN sys_user_role on sys_user_role.role_id = sys_role.id
+        WHERE sys_user_role.user_id = #{id}
+          AND sys_role.deleted = 0;
     </select>
 
 
@@ -59,7 +60,7 @@
     </select>
 
 
-
+    <!-- LocalDateTime 同样不能给这个判断条件 param.endTime != '' -->
     <select id="selectRolePage" resultType="com.fz.admin.module.user.model.entity.SysRole">
 
         SELECT * FROM sys_role
@@ -67,11 +68,11 @@
         <if test="param.status != null">
             AND status = #{param.status}
         </if>
-        <if test="param.beginTime != null and param.beginTime != ''"><!-- 开始时间检索 -->
+        <if test="param.beginTime != null"><!-- 开始时间检索 -->
             and create_time &gt;= #{param.beginTime}
         </if>
-        <if test="param.endTime != null and param.endTime != ''"><!-- 结束时间检索 -->
-            and  create_time &lt;= #{param.endTime}
+        <if test="param.endTime != null"><!-- 结束时间检索 -->
+            and create_time &lt;= #{param.endTime}
         </if>
         <if test="param.key != null and param.key != ''">
             AND `key` like concat('%', #{param.key}, '%')
@@ -81,4 +82,15 @@
         </if>
         order by id
     </select>
+
+
+    <select id="selectRolesByMenuId" resultType="com.fz.admin.module.user.model.entity.SysRole">
+        SELECT sys_role.id
+        FROM sys_role
+                 JOIN sys_role_menu ON sys_role.id = sys_role_menu.role_id
+        WHERE sys_role_menu.menu_id = #{menuId} AND sys_role.deleted = 0 AND sys_role.status = 0
+    </select>
+
+
+
 </mapper>

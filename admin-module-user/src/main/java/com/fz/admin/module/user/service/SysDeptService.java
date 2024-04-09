@@ -7,22 +7,16 @@ import com.fz.admin.module.user.model.entity.SysDept;
 import com.fz.admin.module.user.model.param.DeptCreateOrUpdateParam;
 import com.fz.admin.module.user.model.param.DeptListParam;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface SysDeptService extends IService<SysDept> {
 
-    /**
-     * 获取所有子部门
-     *
-     * @param deptId
-     * @return
-     */
-    List<Long> getChildDeptIdList(Long deptId);
 
     /**
      * 获取指定部门下的所有子部门
-     * @param parentDeptId
-     * @return
+     * @param parentDeptId 父部门id
+     * @return 部门列表
      */
     List<SysDept> getChildDeptList(Long parentDeptId);
 
@@ -35,8 +29,8 @@ public interface SysDeptService extends IService<SysDept> {
 
     /**
      * 通过部门id获取部门信息
-     * @param id
-     * @return
+     * @param id 部门id
+     * @return 部门数据
      */
     SysDept getDeptById(Long id);
 
@@ -68,4 +62,23 @@ public interface SysDeptService extends IService<SysDept> {
      * @return 树形信息
      */
     List<TreeSelect> getDeptTree(DeptListParam param);
+
+
+    /**
+     * 校验部门是否有效。如下情况，视为无效：
+     * 1. 部门编号不存在
+     * 2. 部门被禁用
+     *
+     * @param ids 部门id列表
+     */
+    void validateDeptList(Collection<Long> ids);
+
+    void validateDept(Long id);
+
+    /**
+     * 获取角色拥有的部门数据权限
+     * @param roleId 角色id
+     * @return 部门列表
+     */
+    List<SysDept> listDeptByRoleId(Long roleId);
 }

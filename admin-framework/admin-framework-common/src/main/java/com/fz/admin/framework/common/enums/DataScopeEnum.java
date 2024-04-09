@@ -13,7 +13,7 @@ import java.util.Arrays;
  */
 @Getter
 @AllArgsConstructor
-public enum DataScopeEnum {
+public enum DataScopeEnum implements IntArrayValuable{
 
     ALL(1), // 全部数据权限
 

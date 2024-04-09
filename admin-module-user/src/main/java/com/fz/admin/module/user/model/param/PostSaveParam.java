@@ -11,7 +11,7 @@ import lombok.Data;
 
 @Schema(description = "岗位创建/修改参数")
 @Data
-public class PostCreateOrUpdateParam {
+public class PostSaveParam {
 
     @Schema(description = "岗位编号", example = "0")
     private Long id;

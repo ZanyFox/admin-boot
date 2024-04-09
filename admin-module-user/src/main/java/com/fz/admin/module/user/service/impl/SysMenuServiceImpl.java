@@ -7,21 +7,19 @@ import com.baomidou.mybatisplus.core.toolkit.StringPool;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fz.admin.framework.common.constant.Constants;
 import com.fz.admin.framework.common.enums.CommonStatusEnum;
+import com.fz.admin.framework.common.enums.RoleEnum;
 import com.fz.admin.framework.common.enums.ServRespCode;
 import com.fz.admin.framework.common.exception.ServiceException;
-import com.fz.admin.framework.common.util.CollectionConverter;
 import com.fz.admin.module.user.constant.UserConstants;
 import com.fz.admin.module.user.enums.MenuTypeEnum;
-import com.fz.admin.module.user.mapper.SysMenuMapper;
-import com.fz.admin.module.user.mapper.SysRoleMapper;
-import com.fz.admin.module.user.mapper.SysRoleMenuMapper;
-import com.fz.admin.module.user.mapper.SysUserMapper;
+import com.fz.admin.module.user.mapper.*;
 import com.fz.admin.module.user.model.entity.SysMenu;
 import com.fz.admin.module.user.model.entity.SysRole;
 import com.fz.admin.module.user.model.entity.SysRoleMenu;
 import com.fz.admin.module.user.model.param.MenuCreateOrUpdateParam;
 import com.fz.admin.module.user.model.param.MenuListParam;
 import com.fz.admin.module.user.model.vo.MenuRouteVO;
+import com.fz.admin.module.user.model.vo.MenuSimpleRespVO;
 import com.fz.admin.module.user.model.vo.RouteMetaVO;
 import com.fz.admin.module.user.service.SysMenuService;
 import com.google.common.annotations.VisibleForTesting;
@@ -32,12 +30,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.fz.admin.framework.common.util.CollectionConverter.convertSet;
+import static com.fz.admin.framework.security.util.SecurityContextUtils.getLoginUserId;
 import static com.fz.admin.module.user.model.entity.SysMenu.ID_ROOT;
 
 @Service
@@ -51,7 +48,10 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
 
     private SysRoleMapper roleMapper;
 
+    private SysUserRoleMapper userRoleMapper;
+
     private SysRoleMenuMapper roleMenuMapper;
+
 
     @Override
     public List<MenuRouteVO> getRoutesByUserId(Long id) {
@@ -64,14 +64,6 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         } else menus = menuMapper.selectMenuUserId(id);
 
         return buildRoutes(buildMenuTree(menus, 0L));
-    }
-
-
-    @Override
-    public Set<Long> getRoleIdsByMenuId(Long menuId) {
-
-        List<SysRole> sysRoles = menuMapper.selectRolesByMenuId(menuId);
-        return CollectionConverter.convertSet(sysRoles, SysRole::getId);
     }
 
 
@@ -129,19 +121,39 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     @Override
     public List<SysMenu> getMenuList(MenuListParam param) {
 
-        return lambdaQuery()
-                .eq(param.getStatus() != null, SysMenu::getStatus, param.getStatus())
-                .like(StringUtils.isNotBlank(param.getName()), SysMenu::getName, param.getName())
-                .list();
+        List<SysRole> roles = roleMapper.selectRolesByUserId(getLoginUserId());
+
+        return listMenuByRoleIds(convertSet(roles, SysRole::getId), param);
+
     }
 
     @Override
-    public List<SysMenu> getSimpleMenus() {
+    public List<MenuSimpleRespVO> getSimpleMenus() {
 
-        return lambdaQuery()
-                .select(SysMenu::getId, SysMenu::getParentId, SysMenu::getType, SysMenu::getName)
-                .eq(SysMenu::getStatus, CommonStatusEnum.ENABLE.getStatus())
-                .list();
+
+        return getMenuList(MenuListParam.EMPTY).stream()
+                .filter(menu -> CommonStatusEnum.isEnable(menu.getStatus())).map(menu -> {
+                    MenuSimpleRespVO respVO = new MenuSimpleRespVO();
+                    BeanUtils.copyProperties(menu, respVO);
+                    return respVO;
+                }).toList();
+    }
+
+    @Override
+    public List<SysMenu> listMenuByRoleIds(Set<Long> roleIds, MenuListParam param) {
+
+        if (ObjectUtils.isEmpty(roleIds))
+            return Collections.emptyList();
+
+        boolean isSuperAdmin = roleMapper.selectBatchIds(roleIds).stream().map(SysRole::getKey).anyMatch(RoleEnum::isSuperAdmin);
+
+        if (isSuperAdmin)
+            return lambdaQuery()
+                    .eq(param.getStatus() != null, SysMenu::getStatus, param.getStatus())
+                    .like(StringUtils.isNotBlank(param.getName()), SysMenu::getName, param.getName())
+                    .list();
+
+        return menuMapper.selectMenusByRoleIds(roleIds, param);
     }
 
 

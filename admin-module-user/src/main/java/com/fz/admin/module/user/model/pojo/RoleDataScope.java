@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * 部门的数据权限 Response DTO
+ * 部门的数据权限
  *
  *
  */

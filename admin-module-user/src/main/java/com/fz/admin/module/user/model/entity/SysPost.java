@@ -36,6 +36,8 @@ public class SysPost extends BaseEntity {
     @TableField(value = "`order`")
     private Integer order;
 
+    private Boolean deleted;
+
     /**
      * 状态（0正常 1停用）
      */

@@ -11,16 +11,16 @@ import java.time.LocalDateTime;
 
 
 
-@Schema(description = "用户列表分页")
+@Schema(description = "用户列表分页参数")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserPageParam extends PageParam {
 
-    @Schema(description = "用户账号，模糊匹配", example = "yudao")
+    @Schema(description = "用户账号，模糊匹配", example = "")
     private String username;
 
-    @Schema(description = "手机号码，模糊匹配", example = "yudao")
+    @Schema(description = "手机号码，模糊匹配", example = "")
     private String mobile;
 
     @Schema(description = "展示状态", example = "1")

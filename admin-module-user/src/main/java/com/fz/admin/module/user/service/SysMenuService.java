@@ -2,10 +2,11 @@ package com.fz.admin.module.user.service;
 
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.fz.admin.module.user.model.entity.SysMenu;
 import com.fz.admin.module.user.model.param.MenuCreateOrUpdateParam;
 import com.fz.admin.module.user.model.param.MenuListParam;
-import com.fz.admin.module.user.model.entity.SysMenu;
 import com.fz.admin.module.user.model.vo.MenuRouteVO;
+import com.fz.admin.module.user.model.vo.MenuSimpleRespVO;
 
 import java.util.List;
 import java.util.Set;
@@ -20,13 +21,6 @@ public interface SysMenuService extends IService<SysMenu> {
      */
     List<MenuRouteVO> getRoutesByUserId(Long id);
 
-    /**
-     * 获取拥有该菜单权限的角色编号集合
-     *
-     * @param menuIds 菜单id
-     * @return 拥有菜单权限的角色id
-     */
-    Set<Long> getRoleIdsByMenuId(Long menuIds);
 
 
     /**
@@ -65,5 +59,15 @@ public interface SysMenuService extends IService<SysMenu> {
      *
      * @return 菜单列表
      */
-    List<SysMenu> getSimpleMenus();
+    List<MenuSimpleRespVO> getSimpleMenus();
+
+
+    /**
+     * 根据角色id获取菜单
+     * @param roleIds 角色id列表
+     * @param param
+     * @return
+     */
+    List<SysMenu> listMenuByRoleIds(Set<Long> roleIds, MenuListParam param);
+
 }

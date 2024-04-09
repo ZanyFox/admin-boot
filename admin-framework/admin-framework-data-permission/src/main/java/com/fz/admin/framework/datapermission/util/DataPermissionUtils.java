@@ -2,7 +2,8 @@ package com.fz.admin.framework.datapermission.util;
 
 import com.fz.admin.framework.datapermission.annotation.DataPermission;
 import com.fz.admin.framework.datapermission.aop.DataPermissionContextHolder;
-import lombok.SneakyThrows;
+
+import java.util.concurrent.Callable;
 
 /**
  * 数据权限 Util
@@ -14,7 +15,6 @@ public class DataPermissionUtils {
     private static DataPermission DATA_PERMISSION_DISABLE;
 
     @DataPermission(enable = false)
-    @SneakyThrows
     private static DataPermission getDisableDataPermissionDisable() {
         if (DATA_PERMISSION_DISABLE == null) {
 
@@ -42,6 +42,25 @@ public class DataPermissionUtils {
             DataPermissionContextHolder.remove();
         }
     }
+
+    /**
+     * 忽略数据权限，执行对应的逻辑
+     *
+     * @param callable 逻辑
+     * @return 执行结果
+     */
+
+    public static <T> T executeIgnore(Callable<T> callable) throws Exception {
+        DataPermission dataPermission = getDisableDataPermissionDisable();
+        DataPermissionContextHolder.add(dataPermission);
+        try {
+            // 执行 callable
+            return callable.call();
+        } finally {
+            DataPermissionContextHolder.remove();
+        }
+    }
+
 
     @DataPermission(enable = false)
     private static class DisableDataPermission {

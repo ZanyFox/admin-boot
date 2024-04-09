@@ -14,4 +14,12 @@
         id,user_id,role_id
     </sql>
 
+
+    <insert id="insertBatch">
+        insert into sys_user_role(role_id, user_id) values
+        <foreach item="item"  collection="roles" separator=",">
+            (#{item.roleId},#{item.userId})
+        </foreach>
+    </insert>
+
 </mapper>

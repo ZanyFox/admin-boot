@@ -6,7 +6,7 @@ import com.fz.admin.framework.common.pojo.ServRespEntity;
 import com.fz.admin.module.user.model.entity.SysPost;
 import com.fz.admin.module.user.model.param.PostPageParam;
 import com.fz.admin.module.user.service.SysPostService;
-import com.fz.admin.module.user.model.param.PostCreateOrUpdateParam;
+import com.fz.admin.module.user.model.param.PostSaveParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,7 +35,7 @@ public class PostController {
     @PostMapping("/create")
     @Operation(summary = "创建岗位")
     // @PreAuthorize("@ss.hasPermission('system:post:create')")
-    public ServRespEntity<Long> createPost(@Validated @RequestBody PostCreateOrUpdateParam param) {
+    public ServRespEntity<Long> createPost(@Validated @RequestBody PostSaveParam param) {
         Long postId = postService.createPost(param);
         return success(postId);
     }
@@ -43,7 +43,7 @@ public class PostController {
     @PutMapping("/update")
     @Operation(summary = "修改岗位")
     // @PreAuthorize("@ss.hasPermission('system:post:update')")
-    public ServRespEntity<Boolean> updatePost(@Validated @RequestBody PostCreateOrUpdateParam param) {
+    public ServRespEntity<Boolean> updatePost(@Validated @RequestBody PostSaveParam param) {
         postService.updatePost(param);
         return success(true);
     }

@@ -322,7 +322,7 @@ public class DataPermissionDatabaseInterceptor extends JsqlParserSupport impleme
      * 处理 joins
      *
      * @param mainTables 可以为 null
-     * @param joins      join 集合
+     * @param joins      join 列表
      * @return List<Table> 右连接查询的 Table 列表
      */
     private List<Table> processJoins(List<Table> mainTables, List<Join> joins) {

@@ -57,7 +57,7 @@ public interface SysDictDataService extends IService<SysDictData> {
     /**
      * 根据类型获取字典数据
      * @param type 字典类型
-     * @return 字典数据集合
+     * @return 字典数据列表
      */
     List<SysDictData> getDictDataByType(String type);
 }

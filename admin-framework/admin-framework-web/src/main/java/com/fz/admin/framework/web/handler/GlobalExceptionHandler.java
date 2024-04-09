@@ -155,7 +155,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(value = Exception.class)
     public ServRespEntity<?> defaultExceptionHandler(HttpServletRequest req, Throwable ex) {
 
-        log.error("[defaultExceptionHandler] {}", ex.getLocalizedMessage());
+        log.error("[defaultExceptionHandler] ", ex);
 
         return ServRespEntity.fail(SERVER_INTERNAL_ERROR);
     }

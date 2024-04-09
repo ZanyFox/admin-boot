@@ -4,8 +4,8 @@ package com.fz.admin.module.user.service.impl;
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fz.admin.framework.common.enums.CommonStatusEnum;
 import com.fz.admin.framework.common.enums.DataScopeEnum;
@@ -16,18 +16,14 @@ import com.fz.admin.framework.common.pojo.PageResult;
 import com.fz.admin.framework.common.util.Json;
 import com.fz.admin.framework.mybatis.util.MyBatisUtils;
 import com.fz.admin.framework.redis.constant.RedisCacheConstant;
-import com.fz.admin.module.user.model.entity.SysDept;
-import com.fz.admin.module.user.model.entity.SysRole;
-import com.fz.admin.module.user.model.entity.SysRoleMenu;
-import com.fz.admin.module.user.model.entity.SysUserRole;
-import com.fz.admin.module.user.model.param.RoleCreateParam;
+import com.fz.admin.module.user.mapper.*;
+import com.fz.admin.module.user.model.entity.*;
+import com.fz.admin.module.user.model.param.RoleAssignUsersParam;
 import com.fz.admin.module.user.model.param.RolePageParam;
-import com.fz.admin.module.user.mapper.SysRoleMapper;
-import com.fz.admin.module.user.mapper.SysRoleMenuMapper;
-import com.fz.admin.module.user.mapper.SysUserMapper;
-import com.fz.admin.module.user.mapper.SysUserRoleMapper;
+import com.fz.admin.module.user.model.param.RoleSaveParam;
 import com.fz.admin.module.user.model.pojo.RoleDataScope;
 import com.fz.admin.module.user.service.SysDeptService;
+import com.fz.admin.module.user.service.SysRoleMenuService;
 import com.fz.admin.module.user.service.SysRoleService;
 import com.fz.admin.module.user.service.SysUserRoleService;
 import com.google.common.base.Suppliers;
@@ -40,12 +36,12 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -58,7 +54,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
     private SysRoleMapper roleMapper;
 
-    private StringRedisTemplate stringRedisTemplate;
+    private SysRoleDeptMapper roleDeptMapper;
 
     private RedisTemplate<String, Object> redisTemplate;
 
@@ -71,6 +67,8 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     private SysDeptService deptService;
 
     private SysRoleMenuMapper roleMenuMapper;
+
+    private SysRoleMenuService roleMenuService;
 
     @Override
     public List<SysRole> getRoleList(Set<Long> roleIds) {
@@ -229,11 +227,11 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     public List<SysRole> getRolesByUserId(Long userId) {
 
         return roleMapper.selectRolesByUserId(userId);
-
     }
 
+    @Transactional
     @Override
-    public Long createRole(RoleCreateParam param) {
+    public Long createRole(RoleSaveParam param) {
 
         validateRoleDuplicate(param.getName(), param.getKey(), null);
 
@@ -242,12 +240,24 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         role.setStatus(CommonStatusEnum.ENABLE.getStatus());
         role.setDataScope(DataScopeEnum.ALL.getScope()); // 默认可查看所有数据。原因是，可能一些项目不需要项目权限
         roleMapper.insert(role);
+        // 新增角色菜单关联关系
+        if (ObjectUtils.isNotEmpty(param.getMenuIds())) {
+            // TODO 校验菜单存在
+            List<SysRoleMenu> insertRoleMenus = param.getMenuIds().stream().map(id -> {
+                SysRoleMenu roleMenu = new SysRoleMenu();
+                roleMenu.setRoleId(role.getId());
+                roleMenu.setMenuId(id);
+                return roleMenu;
+            }).toList();
+            roleMenuMapper.insertBatch(insertRoleMenus);
+        }
         return role.getId();
     }
 
+    @Transactional
     @CacheEvict(value = RedisCacheConstant.ROLE, key = "#param.id")
     @Override
-    public void updateRole(RoleCreateParam param) {
+    public void updateRole(RoleSaveParam param) {
 
         validateRoleExist(param.getId());
         validateRoleDuplicate(param.getName(), param.getKey(), param.getId());
@@ -255,6 +265,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         SysRole updateRole = new SysRole();
         BeanUtils.copyProperties(param, updateRole);
         roleMapper.updateById(updateRole);
+        roleMenuService.updateRoleMenus(param.getId(), param.getMenuIds());
     }
 
 
@@ -262,11 +273,15 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @Override
     public void updateRoleStatus(Long id, Integer status) {
         validateRoleExist(id);
+
+        Long userRoleCount = ChainWrappers.lambdaQueryChain(userRoleMapper).eq(SysUserRole::getRoleId, id).count();
+        if (userRoleCount > 0)
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "角色已被分配无法禁用");
         lambdaUpdate().eq(SysRole::getId, id).set(SysRole::getStatus, status).update();
     }
 
-    @Transactional(rollbackFor = Exception.class)
 
+    @Transactional(rollbackFor = Exception.class)
     @Caching(evict = {
             // 删除role:id缓存
             @CacheEvict(value = RedisCacheConstant.ROLE, key = "#id"),
@@ -274,21 +289,24 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             @CacheEvict(value = RedisCacheConstant.USER_ROLE_IDS, allEntries = true)
     })
     @Override
-    public void deleteRole(Long id) {
+    public void deleteRole(Long roleId) {
 
-        validateRoleExist(id);
-        removeById(id);
-        // 删除sys_user_role 关联表数据
-        userRoleMapper.delete(Wrappers.<SysUserRole>lambdaQuery().eq(SysUserRole::getRoleId, id));
-        roleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, id));
+        validateRoleExist(roleId);
+
+        List<SysUserRole> sysUserRoles = ChainWrappers.lambdaQueryChain(userRoleMapper)
+                .eq(SysUserRole::getRoleId, roleId).list();
+
+        if (ObjectUtils.isNotEmpty(sysUserRoles)) {
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "角色被分配无法删除");
+        }
+
+        removeById(roleId);
+        // 删除角色与菜单关联关系
+        roleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, roleId));
+        // 删除角色与部门关联关系（角色数据权限）
+        ChainWrappers.lambdaUpdateChain(roleDeptMapper).eq(SysRoleDept::getRoleId, roleId).remove();
     }
 
-    @Override
-    public SysRole getRoleById(Long id) {
-
-
-        return null;
-    }
 
     @Override
     public PageResult<SysRole> getRolePage(RolePageParam param) {
@@ -306,10 +324,99 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                 .eq(SysRole::getStatus, CommonStatusEnum.ENABLE.getStatus()).list();
     }
 
+    @Override
+    public List<SysRole> getRolesByMenuId(Long menuId) {
+
+        return roleMapper.selectRolesByMenuId(menuId);
+    }
+
+    @Transactional
+    @Override
+    public void updateRoleDataScope(Long roleId, Integer dataScope, Set<Long> dataScopeDeptIds) {
+        validateRoleExist(roleId);
+        SysRole updateRole = new SysRole();
+        updateRole.setId(roleId);
+        updateRole.setDataScope(dataScope);
+        updateRole.setDataScopeDeptIds(Json.toJsonString(dataScopeDeptIds));
+        roleMapper.updateById(updateRole);
+
+        ChainWrappers.lambdaUpdateChain(SysRoleDept.class).eq(SysRoleDept::getRoleId, roleId).remove();
+
+        if (ObjectUtils.isNotEmpty(dataScopeDeptIds)) {
+            List<SysRoleDept> sysRoleDepts = dataScopeDeptIds.stream().map(id -> {
+                SysRoleDept sysRoleDept = new SysRoleDept();
+                sysRoleDept.setRoleId(roleId);
+                sysRoleDept.setDeptId(id);
+                return sysRoleDept;
+            }).toList();
+            roleDeptMapper.insertBatch(sysRoleDepts);
+        }
+    }
+
+    @Transactional
+    @Override
+    public void deleteRoleBatchByIds(Set<Long> ids) {
+
+        List<Long> existRoleIds = ChainWrappers.lambdaQueryChain(userRoleMapper)
+                .in(SysUserRole::getRoleId, ids).list().stream()
+                .map(SysUserRole::getRoleId).toList();
+
+        if (ObjectUtils.isNotEmpty(existRoleIds)) {
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), String.format("角色%s被分配，无法删除", Json.toJsonString(existRoleIds)));
+        }
+
+        removeBatchByIds(ids);
+        // 删除角色部门关联关系（数据权限）
+        ChainWrappers.lambdaUpdateChain(roleDeptMapper).in(SysRoleDept::getRoleId, ids).remove();
+        // 删除角色菜单关联关系
+        ChainWrappers.lambdaUpdateChain(roleMenuMapper).in(SysRoleMenu::getRoleId, ids).remove();
+    }
+
+    @Override
+    public void assignUsers(RoleAssignUsersParam param) {
+        validateRoleExist(param.getRoleId());
+
+        List<SysUser> existedUsers = userMapper.selectUserAndRoleIdByUserIds(param.getRoleId(), param.getUserIds());
+
+        List<Long> existedUserIds = existedUsers.stream().map(SysUser::getId).toList();
+
+        Set<Long> notExistedIds = param.getUserIds().stream().filter(id -> !existedUserIds.contains(id)).collect(Collectors.toSet());
+        if (ObjectUtils.isNotEmpty(notExistedIds)) {
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), String.format("用户%1$s不存在", Json.toJsonString(notExistedIds)));
+        }
+
+        // 判断是否有用户已经拥有该角色
+        Predicate<SysUser> hasRoleId = (user) -> convertList(user.getRoles(), SysRole::getId).contains(param.getRoleId());
+        List<Long> hasRoleUserIds = existedUsers.stream().filter(user -> ObjectUtils.isNotEmpty(user.getRoles()) && hasRoleId.test(user)).map(SysUser::getId).toList();
+        if (ObjectUtils.isNotEmpty(hasRoleUserIds)) {
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), String.format("用户%1$s已经拥有该角色", Json.toJsonString(hasRoleUserIds)));
+        }
+
+        List<SysUserRole> insertUserRoles = existedUserIds.stream().map(id -> {
+            SysUserRole sysUserRole = new SysUserRole();
+            sysUserRole.setRoleId(param.getRoleId());
+            sysUserRole.setUserId(id);
+            return sysUserRole;
+        }).toList();
+
+        userRoleMapper.insertBatch(insertUserRoles);
+    }
+
+    @Override
+    public void deleteUserRoleBatch(Long roleId, Set<Long> userIds) {
+
+        validateRoleExist(roleId);
+
+        ChainWrappers.lambdaUpdateChain(userRoleMapper)
+                .eq(SysUserRole::getRoleId, roleId)
+                .in(SysUserRole::getUserId, userIds)
+                .remove();
+    }
+
     void validateRoleExist(Long id) {
 
-        if (id == null || getById(id) == null)
-            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR);
+        if (id == null || lambdaQuery().eq(SysRole::getId, id).count() == 0)
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "该角色不存在");
     }
 
 

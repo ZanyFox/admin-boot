@@ -27,6 +27,7 @@ public class SysRole extends BaseEntity {
     /**
      * 角色权限字符串
      */
+    @TableField(value = "`key`")
     private String key;
 
     /**
@@ -43,12 +44,12 @@ public class SysRole extends BaseEntity {
     /**
      * 菜单树选择项是否关联显示
      */
-    private Integer menuCheckStrictly;
+    private Boolean menuCheckStrictly;
 
     /**
      * 部门树选择项是否关联显示
      */
-    private Integer deptCheckStrictly;
+    private Boolean deptCheckStrictly;
 
 
     /**

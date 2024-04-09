@@ -4,9 +4,10 @@ package com.fz.admin.module.user.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.fz.admin.framework.common.pojo.PageResult;
 import com.fz.admin.module.user.model.entity.SysPost;
-import com.fz.admin.module.user.model.param.PostCreateOrUpdateParam;
+import com.fz.admin.module.user.model.param.PostSaveParam;
 import com.fz.admin.module.user.model.param.PostPageParam;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface SysPostService extends IService<SysPost> {
@@ -17,7 +18,7 @@ public interface SysPostService extends IService<SysPost> {
      * @param param 岗位参数
      * @return 岗位id
      */
-    Long createPost(PostCreateOrUpdateParam param);
+    Long createPost(PostSaveParam param);
 
 
     /**
@@ -25,7 +26,7 @@ public interface SysPostService extends IService<SysPost> {
      *
      * @param param 岗位参数
      */
-    void updatePost(PostCreateOrUpdateParam param);
+    void updatePost(PostSaveParam param);
 
     /**
      * 删除岗位
@@ -47,5 +48,12 @@ public interface SysPostService extends IService<SysPost> {
      */
     List<SysPost> getSimplePostList();
 
+    /**
+     * 获取岗位分页数据
+     * @param param 分页参数
+     * @return 分页结果
+     */
     PageResult<SysPost> getPostPage(PostPageParam param);
+
+    void validatePostList(Collection<Long> ids);
 }

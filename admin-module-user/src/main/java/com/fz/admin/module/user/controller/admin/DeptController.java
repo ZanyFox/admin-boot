@@ -16,8 +16,10 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 import static com.fz.admin.framework.common.pojo.ServRespEntity.success;
+import static com.fz.admin.framework.common.util.CollectionConverter.convertSet;
 
 
 @Tag(name = "管理后台 - 部门")
@@ -84,6 +86,14 @@ public class DeptController {
     public ServRespEntity<List<TreeSelect>> getDeptTree(DeptListParam param) {
         List<TreeSelect> deptTree = deptService.getDeptTree(param);
         return success(deptTree);
+    }
+
+    @GetMapping("/list-by-role")
+    @Operation(summary = "获取角色拥有的部门数据权限")
+    // @PreAuthorize("@ss.hasPermission('system:dept:query')")
+    public ServRespEntity<Set<Long>> getDeptList(@RequestParam("roleId") Long roleId) {
+        List<SysDept> list = deptService.listDeptByRoleId(roleId);
+        return success(convertSet(list, SysDept::getId));
     }
 
 }

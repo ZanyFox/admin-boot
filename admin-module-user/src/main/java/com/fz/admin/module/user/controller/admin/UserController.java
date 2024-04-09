@@ -1,14 +1,10 @@
 package com.fz.admin.module.user.controller.admin;
 
-import com.fz.admin.framework.common.enums.DeletedEnum;
-import com.fz.admin.framework.common.exception.ServiceException;
 import com.fz.admin.framework.common.pojo.PageResult;
 import com.fz.admin.framework.common.pojo.ServRespEntity;
-import com.fz.admin.module.user.model.param.UserPageParam;
-import com.fz.admin.module.user.model.param.UserUpdatePasswordParam;
-import com.fz.admin.module.user.model.param.UserUpdateStatusParam;
+import com.fz.admin.framework.web.validation.group.CreateOrUpdateGroup;
 import com.fz.admin.module.user.model.entity.SysUser;
-import com.fz.admin.module.user.model.param.UserSaveParam;
+import com.fz.admin.module.user.model.param.*;
 import com.fz.admin.module.user.model.vo.MenuRouteVO;
 import com.fz.admin.module.user.model.vo.UserPermMenuInfoVO;
 import com.fz.admin.module.user.service.SysMenuService;
@@ -16,7 +12,6 @@ import com.fz.admin.module.user.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -24,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static com.fz.admin.framework.common.enums.ServRespCode.REQUEST_PARAMETER_ERROR;
 import static com.fz.admin.framework.common.pojo.ServRespEntity.success;
 import static com.fz.admin.framework.security.util.SecurityContextUtils.getLoginUserId;
 
@@ -42,7 +36,7 @@ public class UserController {
     private SysMenuService menuService;
 
 
-    @PostMapping("add")
+    @PostMapping("/create")
     @Operation(summary = "新增用户")
     // @PreAuthorize("@ss.hasPermission('system:user:create')")
     public ServRespEntity<Long> createUser(@Validated @RequestBody UserSaveParam param) {
@@ -71,7 +65,7 @@ public class UserController {
     @PutMapping("update")
     @Operation(summary = "修改用户")
     // @PreAuthorize("@ss.hasAnyPermission('system:user:update')")
-    public ServRespEntity<Boolean> updateUser(@Valid @RequestBody UserSaveParam param) {
+    public ServRespEntity<Boolean> updateUser(@Validated({CreateOrUpdateGroup.UpdateGroup.class}) @RequestBody UserSaveParam param) {
         userService.updateUser(param);
         return success(true);
     }
@@ -105,11 +99,7 @@ public class UserController {
     @Parameter(name = "id", description = "编号", required = true, example = "0")
     // @PreAuthorize("@ss.hasAnyPermission('system:user:query')")
     public ServRespEntity<SysUser> getUser(@RequestParam("id") Long id) {
-
         SysUser user = userService.getUserDetail(id);
-        if (user == null || DeletedEnum.isDeleted(user.getDeleted())) {
-            throw new ServiceException(REQUEST_PARAMETER_ERROR.getCode(), "该用户不存在");
-        }
         return success(user);
     }
 
@@ -125,8 +115,20 @@ public class UserController {
     @Operation(summary = "获取当前用户路由信息")
     @GetMapping("routes")
     public ServRespEntity<List<MenuRouteVO>> getMenuRoute() {
-
         return success(menuService.getRoutesByUserId(getLoginUserId()));
     }
 
+    @Operation(summary = "获取没被分配该角色的用户列表")
+    @Parameter(name = "roleId", description = "角色id", required = true)
+    @GetMapping("/unassigned-role")
+    public ServRespEntity<PageResult<SysUser>> listUsersNotAssignedRole(@RequestParam("roleId") Long roleId, UserAssignRolePageParam param) {
+        return success(userService.getUserNotAssignedRolePage(roleId, param));
+    }
+
+    @Operation(summary = "获取被分配该角色的用户列表")
+    @Parameter(name = "roleId", description = "角色id", required = true)
+    @GetMapping("/assigned-role")
+    public ServRespEntity<PageResult<SysUser>> listUsersAssignedRole(@RequestParam("roleId") Long roleId, UserAssignRolePageParam param) {
+        return success(userService.getUserAssignedRolePage(roleId, param));
+    }
 }

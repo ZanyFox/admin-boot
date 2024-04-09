@@ -1,30 +1,27 @@
 package com.fz.admin.module.user.service.impl;
 
 
-import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.Db;
+import com.fz.admin.framework.common.enums.DeletedEnum;
 import com.fz.admin.framework.common.enums.RoleEnum;
 import com.fz.admin.framework.common.enums.ServRespCode;
 import com.fz.admin.framework.common.exception.ServiceException;
 import com.fz.admin.framework.common.pojo.PageResult;
 import com.fz.admin.framework.common.util.CollectionConverter;
 import com.fz.admin.framework.common.util.Json;
+import com.fz.admin.framework.datapermission.util.DataPermissionUtils;
 import com.fz.admin.framework.file.FileService;
 import com.fz.admin.framework.mybatis.util.MyBatisUtils;
 import com.fz.admin.module.user.mapper.SysUserMapper;
 import com.fz.admin.module.user.mapper.SysUserPostMapper;
 import com.fz.admin.module.user.model.entity.SysUser;
 import com.fz.admin.module.user.model.entity.SysUserPost;
-import com.fz.admin.module.user.model.param.UserPageParam;
-import com.fz.admin.module.user.model.param.UserProfileUpdateParam;
-import com.fz.admin.module.user.model.param.UserProfileUpdatePasswordParam;
-import com.fz.admin.module.user.model.param.UserSaveParam;
+import com.fz.admin.module.user.model.param.*;
 import com.fz.admin.module.user.model.vo.UserPermMenuInfoVO;
-import com.fz.admin.module.user.service.SysUserRoleService;
-import com.fz.admin.module.user.service.SysUserService;
+import com.fz.admin.module.user.service.*;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -42,6 +39,8 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static com.fz.admin.framework.common.enums.ServRespCode.REQUEST_PARAMETER_ERROR;
+
 @Service
 @AllArgsConstructor
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements SysUserService {
@@ -56,6 +55,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     private FileService fileService;
 
+    private SysDeptService deptService;
+
+    private SysPostService postService;
+
+    private PermissionService permissionService;
 
     @Override
     public UserPermMenuInfoVO getUserInfoWithPermissions(Long id) {
@@ -86,14 +90,32 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     public SysUser getUserDetail(Long id) {
 
-        return userMapper.selectUserDetail(id);
+        SysUser user = userMapper.selectUserDetail(id);
+
+        if (user == null || DeletedEnum.isDeleted(user.getDeleted())) {
+            throw new ServiceException(REQUEST_PARAMETER_ERROR.getCode(), "该用户不存在");
+        }
+        return user;
     }
 
     @Transactional(rollbackFor = Exception.class)
     @Override
     public Long createUser(UserSaveParam param) {
 
-        // TODO 唯一性校验
+        DataPermissionUtils.executeIgnore(() -> {
+            // 校验用户名唯一
+            validateUsernameUnique(null, param.getUsername());
+            // 校验手机号唯一
+            validateMobileUnique(null, param.getMobile());
+            // 校验邮箱唯一
+            validateEmailUnique(null, param.getEmail());
+            // 校验部门处于开启状态
+            deptService.validateDept(param.getDeptId());
+            // 校验岗位处于开启状态
+            postService.validatePostList(param.getPostIds());
+        });
+
+
         SysUser user = new SysUser();
         BeanUtils.copyProperties(param, user);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
@@ -114,6 +136,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             userPostMapper.insertBatch(sysUserPosts);
         }
 
+        if (ObjectUtils.isNotEmpty(param.getRoleIds()))
+            permissionService.updateUserRole(user.getId(), param.getRoleIds(), false);
+
         return user.getId();
     }
 
@@ -122,7 +147,24 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public void updateUser(UserSaveParam param) {
 
         param.setPassword(null);
-        // TODO 校验唯一性
+
+        // 关闭数据权限，避免因为没有数据权限，查询不到数据，进而导致唯一校验不正确
+
+        DataPermissionUtils.executeIgnore(() -> {
+            // 校验用户存在
+            validateUserExists(param.getId());
+            // 校验用户名唯一
+            validateUsernameUnique(param.getId(), param.getUsername());
+            // 校验手机号唯一
+            validateMobileUnique(param.getId(), param.getMobile());
+            // 校验邮箱唯一
+            validateEmailUnique(param.getId(), param.getEmail());
+            // 校验部门处于开启状态
+            deptService.validateDept(param.getDeptId());
+            // 校验岗位处于开启状态
+            postService.validatePostList(param.getPostIds());
+        });
+
 
         SysUser user = new SysUser();
         BeanUtils.copyProperties(param, user);
@@ -132,18 +174,28 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             user.setPostIds(postIdsStr);
         }
         userMapper.updateById(user);
+        // 更新用户岗位
         updateUserPost(param.getPostIds(), param.getId());
+        // 更新用户角色
+        permissionService.updateUserRole(param.getId(), param.getRoleIds(), false);
     }
 
-
+    /**
+     * 更新用户岗位
+     *
+     * @param postIds 岗位id列表
+     * @param userId  用户id
+     */
     private void updateUserPost(Set<Long> postIds, Long userId) {
 
         if (postIds == null) return;
 
+        // 获取用户现有岗位
         List<SysUserPost> existUserPosts = userPostMapper
                 .selectList(Wrappers.<SysUserPost>lambdaQuery()
                         .eq(SysUserPost::getUserId, userId));
 
+        // 获取用户被删除的岗位
         List<Long> deletePostIds = existUserPosts.stream()
                 .filter(userPost -> !postIds.contains(userPost.getPostId()))
                 .map(SysUserPost::getId)
@@ -151,6 +203,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         List<Long> existPostIds = CollectionConverter.convertList(existUserPosts, SysUserPost::getPostId);
 
+        // 获取用户新增的岗位
         List<SysUserPost> insertUserPosts = postIds.stream().filter(id -> !existPostIds.contains(id))
                 .map(id -> {
                     SysUserPost userPost = new SysUserPost();
@@ -160,18 +213,21 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                 })
                 .toList();
 
+        // 删除岗位
         if (ObjectUtils.isNotEmpty(deletePostIds))
             userPostMapper.deleteBatchIds(deletePostIds);
 
+        // 新增岗位
         if (ObjectUtils.isNotEmpty(insertUserPosts))
             Db.saveBatch(insertUserPosts);
     }
+
 
     @Transactional
     @Override
     public void deleteUser(Long userId) {
 
-        validateUserExist(userId);
+        validateUserExists(userId);
         userMapper.deleteById(userId);
         userPostMapper.delete(Wrappers.<SysUserPost>lambdaUpdate()
                 .eq(SysUserPost::getUserId, userId));
@@ -181,7 +237,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     public void updateUserPassword(Long id, String password) {
 
-        validateUserExist(id);
+        validateUserExists(id);
         SysUser user = new SysUser();
         user.setId(id);
         user.setPassword(passwordEncoder.encode(password));
@@ -190,7 +246,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Override
     public void updateUserStatus(Long id, Integer status) {
-        validateUserExist(id);
+        validateUserExists(id);
         lambdaUpdate().eq(SysUser::getId, id).set(SysUser::getStatus, status).update();
     }
 
@@ -203,7 +259,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     public void updateUserProfile(Long userId, UserProfileUpdateParam param) {
 
-        validateUserExist(userId);
+        validateUserExists(userId);
         validateEmailUnique(userId, param.getEmail());
         validateMobileUnique(userId, param.getMobile());
         SysUser user = new SysUser();
@@ -224,7 +280,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     public String updateUserAvatar(Long userId, MultipartFile file) throws IOException {
 
-        validateUserExist(userId);
+        validateUserExists(userId);
         String avatarUrl = fileService.uploadFile(file.getInputStream(), file.getOriginalFilename());
         lambdaUpdate().eq(SysUser::getId, userId).set(SysUser::getAvatar, avatarUrl).update();
         return avatarUrl;
@@ -255,11 +311,27 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     }
 
-    private void validateUserExist(Long userId) {
-        if (userId == null) return;
+    private void validateUserExists(Long userId) {
 
-        if (getById(userId) == null)
+        SysUser sysUser = getById(userId);
+        if (sysUser == null)
             throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "用户不存在");
+
+    }
+
+    @Override
+    public PageResult<SysUser> getUserNotAssignedRolePage(Long roleId, UserAssignRolePageParam param) {
+
+        IPage<SysUser> page = MyBatisUtils.buildPage(param);
+        userMapper.selectNotAssignedRoleUserPage(page, roleId, param);
+        return new PageResult<>(page.getRecords(), page.getTotal());
+    }
+
+    @Override
+    public PageResult<SysUser> getUserAssignedRolePage(Long roleId, UserAssignRolePageParam param) {
+        IPage<SysUser> page = MyBatisUtils.buildPage(param);
+        userMapper.selectUserPageByRoleId(page, roleId, param);
+        return new PageResult<>(page.getRecords(), page.getTotal());
     }
 
 
@@ -267,8 +339,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         if (StringUtils.isBlank(email)) {
             return;
         }
-        SysUser user = userMapper.selectOne(Wrappers.<SysUser>lambdaQuery()
-                .eq(SysUser::getEmail, email));
+        SysUser user = userMapper.selectOne(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getEmail, email));
         if (user == null) {
             return;
         }
@@ -281,12 +352,29 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
     }
 
-
-    private void validateMobileUnique(Long id, String mobile) {
-        if (StrUtil.isBlank(mobile)) {
+    private void validateUsernameUnique(Long id, String username) {
+        if (id == null && StringUtils.isBlank(username)) {
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "用户名不能为空");
+        }
+        SysUser user = lambdaQuery().eq(SysUser::getUsername, username).one();
+        if (user == null) {
             return;
         }
-        SysUser user = userMapper.selectOne(lambdaQuery().eq(SysUser::getMobile, mobile));
+        // 如果 id 为空，说明不用比较是否为相同 id 的用户
+        if (id == null) {
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "用户名重复");
+
+        }
+        if (!user.getId().equals(id)) {
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "用户名重复");
+        }
+    }
+
+    private void validateMobileUnique(Long id, String mobile) {
+        if (id == null && StringUtils.isBlank(mobile)) {
+            throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "手机号不能为空");
+        }
+        SysUser user = lambdaQuery().eq(SysUser::getMobile, mobile).one();
         if (user == null) {
             return;
         }

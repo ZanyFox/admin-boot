@@ -1,6 +1,7 @@
 package com.fz.admin.module.user.service.impl;
 
 
+import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -15,7 +16,7 @@ import com.fz.admin.module.user.mapper.SysUserMapper;
 import com.fz.admin.module.user.mapper.SysUserPostMapper;
 import com.fz.admin.module.user.model.entity.SysPost;
 import com.fz.admin.module.user.model.entity.SysUserPost;
-import com.fz.admin.module.user.model.param.PostCreateOrUpdateParam;
+import com.fz.admin.module.user.model.param.PostSaveParam;
 import com.fz.admin.module.user.model.param.PostPageParam;
 import com.fz.admin.module.user.service.SysPostService;
 import lombok.AllArgsConstructor;
@@ -24,7 +25,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
@@ -38,7 +42,7 @@ public class SysPostServiceImpl extends ServiceImpl<SysPostMapper, SysPost> impl
     private SysUserPostMapper userPostMapper;
 
     @Override
-    public Long createPost(PostCreateOrUpdateParam param) {
+    public Long createPost(PostSaveParam param) {
 
         param.setId(null);
         validatePostNameUnique(null, param.getName());
@@ -51,7 +55,7 @@ public class SysPostServiceImpl extends ServiceImpl<SysPostMapper, SysPost> impl
     }
 
     @Override
-    public void updatePost(PostCreateOrUpdateParam param) {
+    public void updatePost(PostSaveParam param) {
 
         validatePostExists(param.getId());
         validatePostNameUnique(param.getId(), param.getName());
@@ -110,6 +114,29 @@ public class SysPostServiceImpl extends ServiceImpl<SysPostMapper, SysPost> impl
                 .page(page);
 
         return new PageResult<>(page.getRecords(), page.getTotal());
+    }
+
+    @Override
+    public void validatePostList(Collection<Long> ids) {
+
+        if (CollUtil.isEmpty(ids)) {
+            return;
+        }
+        // 获得岗位信息
+        Map<Long, SysPost> postMap = postMapper.selectBatchIds(ids).stream()
+                .collect(Collectors.toMap(SysPost::getId, post -> post));
+
+        // 校验
+        ids.forEach(id -> {
+            SysPost post = postMap.get(id);
+            if (post == null) {
+                throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "岗位不存在");
+
+            }
+            if (!CommonStatusEnum.ENABLE.getStatus().equals(post.getStatus())) {
+                throw new ServiceException(ServRespCode.REQUEST_PARAMETER_ERROR.getCode(), "岗位未启用");
+            }
+        });
     }
 
 

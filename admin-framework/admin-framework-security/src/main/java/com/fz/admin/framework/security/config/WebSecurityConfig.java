@@ -139,7 +139,7 @@ public class WebSecurityConfig {
     private Map<HttpMethod, Set<String>> getPermitAllUrlsFromAnnotations() {
 
         Map<HttpMethod, Set<String>> result = new HashMap<>();
-        // 获得接口对应的 HandlerMethod 集合
+        // 获得接口对应的 HandlerMethod 列表
         Map<RequestMappingInfo, HandlerMethod> handlerMethodMap = requestMappingHandlerMapping.getHandlerMethods();
         // 获得有 @PermitAll 注解的接口
         for (Map.Entry<RequestMappingInfo, HandlerMethod> entry : handlerMethodMap.entrySet()) {

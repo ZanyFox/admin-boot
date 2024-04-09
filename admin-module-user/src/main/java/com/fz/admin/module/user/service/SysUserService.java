@@ -4,10 +4,7 @@ package com.fz.admin.module.user.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.fz.admin.framework.common.pojo.PageResult;
 import com.fz.admin.module.user.model.entity.SysUser;
-import com.fz.admin.module.user.model.param.UserPageParam;
-import com.fz.admin.module.user.model.param.UserProfileUpdateParam;
-import com.fz.admin.module.user.model.param.UserProfileUpdatePasswordParam;
-import com.fz.admin.module.user.model.param.UserSaveParam;
+import com.fz.admin.module.user.model.param.*;
 import com.fz.admin.module.user.model.vo.UserPermMenuInfoVO;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -104,7 +101,25 @@ public interface SysUserService extends IService<SysUser> {
 
     /**
      * 批量删除用户
-     * @param ids 用户id集合
+     * @param ids 用户id列表
      */
     void deleteUserBatchByIds(List<Long> ids);
+
+
+
+    /**
+     * 获取未被分配该角色的用户
+     *
+     * @param roleId 角色id
+     * @return 用户列表
+     */
+    PageResult<SysUser> getUserNotAssignedRolePage(Long roleId, UserAssignRolePageParam param);
+
+    /**
+     * 获取已被分配该角色的用户列表
+     * @param roleId 角色id
+     * @param param 分页参数
+     * @return 分页数据
+     */
+    PageResult<SysUser> getUserAssignedRolePage(Long roleId, UserAssignRolePageParam param);
 }

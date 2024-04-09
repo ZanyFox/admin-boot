@@ -28,10 +28,10 @@
 
     <sql id="Base_Column_List">
         id,name,parent_id,
-        order_num,path,component,
+        sort,path,component,
         query,is_frame,is_cache,
         menu_type,visible,status,
-        perms,icon,create_by,
+        perm,icon,create_by,
         create_time,update_by,update_time,
         remark
     </sql>
@@ -57,12 +57,40 @@
     </select>
 
 
-    <select id="selectRolesByMenuId" resultType="com.fz.admin.module.user.model.entity.SysRole">
-        SELECT sys_role.id
-        FROM sys_role
-        JOIN sys_role_menu ON sys_role.id = sys_role_menu.role_id
-        WHERE sys_role_menu.menu_id = #{menuId} AND sys_role.deleted = 0 AND sys_role.status = 0
+
+
+    <select id="selectMenusByUserId" resultType="sysMenu">
+        SELECT DISTINCT sys_menu.*
+        FROM sys_menu
+                 LEFT JOIN sys_role_menu ON sys_role_menu.menu_id = sys_menu.id
+                 LEFT JOIN sys_role ON sys_role_menu.role_id = sys_role.id
+                 LEFT JOIN sys_user_role user_role ON sys_role.id = user_role.role_id
+                 LEFT JOIN sys_user ON user_role.user_id = sys_user.id
+        WHERE sys_user.id = #{userId}
+          AND sys_role.deleted = 0 AND sys_menu.deleted = 0 ORDER BY sys_menu.id;
     </select>
 
+
+    <select id="selectMenusByRoleIds" resultType="com.fz.admin.module.user.model.entity.SysMenu">
+
+        SELECT DISTINCT sys_menu.*
+        FROM sys_menu
+        LEFT JOIN sys_role_menu ON sys_role_menu.menu_id = sys_menu.id
+        LEFT JOIN sys_role ON sys_role_menu.role_id = sys_role.id
+        WHERE sys_role.id IN
+        <foreach collection="roleIds" open="(" close=")" separator="," item="id">
+            #{id}
+        </foreach>
+        AND sys_role.deleted = 0 AND sys_menu.deleted = 0
+
+        <if test="param.name != null and param.name != ''">
+            AND sys_menu.name like concat('%', #{param.name}, '%')
+        </if>
+
+        <if test="param.status != null">
+            AND sys_menu.status = #{param.status}
+        </if>
+        ORDER BY sys_menu.id;
+    </select>
 
 </mapper>

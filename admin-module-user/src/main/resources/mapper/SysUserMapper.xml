@@ -176,10 +176,69 @@
                  LEFT JOIN sys_user_role ON sys_user_role.user_id = sys_user.id
                  LEFT JOIN sys_role ON sys_user_role.role_id = sys_role.id AND sys_role.deleted = 0
                  LEFT JOIN sys_user_post ON sys_user.id = sys_user_post.user_id
-                 LEFT JOIN sys_post ON sys_post.id = sys_user_post.post_id
-        WHERE sys_user.id = #{id}
+                 LEFT JOIN sys_post ON sys_post.id = sys_user_post.post_id AND sys_post.deleted = 0
+        WHERE sys_user.id = #{id} AND sys_dept.deleted = 0
     </select>
 
+    <sql id="SysUserVO">
+        sys_user.id, sys_user.username, sys_user.nickname, sys_user.email, sys_user.mobile, sys_user.`status`, sys_user.create_time
+    </sql>
+
+    <select id="selectUsersByRoleId" resultType="com.fz.admin.module.user.model.entity.SysUser">
+        SELECT
+        <include refid="SysUserVO"/>
+        FROM sys_user
+        LEFT JOIN sys_user_role ON sys_user_role.user_id = sys_user.id
+        WHERE sys_user_role.role_id = #{roleId} AND sys_user.deleted = 0
+    </select>
+
+    <select id="selectNotAssignedRoleUserPage" resultType="com.fz.admin.module.user.model.entity.SysUser">
+
+        SELECT <include refid="SysUserVO"/>
+        FROM sys_user
+        WHERE sys_user.id NOT IN (SELECT sys_user.id
+                                  FROM sys_user
+                                           LEFT JOIN sys_user_role ON sys_user_role.user_id = sys_user.id
+                                  WHERE sys_user_role.role_id = #{roleId})
+        <if test="param.username != null and param.username != ''">
+            AND sys_user.mobile LIKE concat('%', #{param.username}, '%')
+        </if>
+
+        <if test="param.mobile != null and param.mobile != ''">
+            AND sys_user.mobile LIKE concat('%', #{param.mobile}, '%')
+        </if>
+
+    </select>
+
+
+    <select id="selectUserPageByRoleId" resultType="com.fz.admin.module.user.model.entity.SysUser">
+        SELECT
+        <include refid="SysUserVO"/>
+        FROM sys_user
+        LEFT JOIN sys_user_role ON sys_user_role.user_id = sys_user.id
+        WHERE sys_user_role.role_id = #{roleId} AND sys_user.deleted = 0
+        <if test="param.username != null and param.username != ''">
+            AND sys_user.mobile LIKE concat('%', #{param.mobile}, '%')
+        </if>
+
+        <if test="param.mobile != null and param.mobile != ''">
+            AND sys_user.mobile LIKE concat('%', #{param.mobile}, '%')
+        </if>
+    </select>
+
+    <!-- 这里把判断条件放在LEFT JOIN ON 后面没有放在WHERE中 是为了返回所有满足条件的user不受role条件的影响，这样就可以根据返回的数据判断role是否为空 -->
+    <select id="selectUserAndRoleIdByUserIds" resultMap="SysUserResultMap">
+        SELECT
+        sys_user.id user_id, sys_user_role.role_id
+        FROM
+        sys_user
+        LEFT JOIN sys_user_role ON sys_user.id = sys_user_role.user_id AND sys_user_role.role_id = #{roleId}
+        WHERE
+        sys_user.id IN
+        <foreach collection="userIds" item="id" separator="," open="(" close=")">
+            #{id}
+        </foreach>
+    </select>
 
 
 </mapper>
